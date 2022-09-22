@@ -1,3 +1,5 @@
+import spacy_stanza
+
 from langs.base_tagger import Tagger
 
 

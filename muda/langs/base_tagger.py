@@ -1,4 +1,6 @@
 import abc
+import defaultdict
+import re
 
 
 class Tagger(abc.ABC):

@@ -1,11 +1,26 @@
-import re
-import abc
 import argparse
-import spacy_stanza  # type: ignore
 from collections import defaultdict
 from allennlp.predictors.predictor import Predictor  # type: ignore
 
-from langs import *
+from langs import (
+    base_tagger,
+    ar_tagger,
+    de_tagger,
+    en_tagger,
+    es_tagger,
+    fr_tagger,
+    he_tagger,
+    it_tagger,
+    ja_tagger,
+    ko_tagger,
+    nl_tagger,
+    pt_tagger,
+    ro_tagger,
+    ru_tagger,
+    tr_tagger,
+    zh_tagger,
+)
+
 
 def build_tagger(lang) -> base_tagger.Tagger:
     taggers = {
