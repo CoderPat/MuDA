@@ -2,9 +2,9 @@ import re
 import abc
 import argparse
 import spacy
-import spacy_stanza
+import spacy_stanza # type: ignore
 from collections import defaultdict
-from allennlp.predictors.predictor import Predictor
+from allennlp.predictors.predictor import Predictor # type: ignore
 
 en_tagger = spacy_stanza.load_pipeline("en", processors="tokenize,pos,lemma,depparse")
 
