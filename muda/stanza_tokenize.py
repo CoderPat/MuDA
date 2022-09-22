@@ -1,6 +1,6 @@
 import argparse
-import spacy_stanza # type: ignore
-import sacremoses # type: ignore
+import spacy_stanza  # type: ignore
+import sacremoses  # type: ignore
 
 
 def main():
