@@ -1,7 +1,6 @@
 import re
 import abc
 import argparse
-import spacy
 import spacy_stanza  # type: ignore
 from collections import defaultdict
 from allennlp.predictors.predictor import Predictor  # type: ignore
@@ -919,7 +918,7 @@ def main():
                     for mention in cluster[1:]:
                         for i in range(mention[0], mention[1] + 1):
                             has_ante[i] = True
-            except:
+            except BaseException:
                 failed_coref += 1
                 pass
 

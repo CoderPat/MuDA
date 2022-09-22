@@ -24,7 +24,7 @@ def main():
             elif len(e.strip()) > 0:
                 file.write(f"{e.strip()} ||| <blank>\n")
             else:
-                file.write(f"<blank> ||| <blank>\n")
+                file.write("<blank> ||| <blank>\n")
 
 
 if __name__ == "__main__":
