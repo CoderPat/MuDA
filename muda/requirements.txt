@@ -1,0 +1,4 @@
+allennlp==2.10.0
+sacremoses==0.0.53
+spacy==3.3.0
+spacy_stanza==1.0.2
