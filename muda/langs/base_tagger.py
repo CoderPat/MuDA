@@ -1,10 +1,11 @@
 import abc
 
+
 class Tagger(abc.ABC):
     """Abstact class that represent a tagger for a language"""
 
     def __init__(self):
-        #self.tagger = spacy.load("xx_ent_wiki_sm")
+        # self.tagger = spacy.load("xx_ent_wiki_sm")
         self.formality_classes = {}
         self.ambiguous_pronouns = None
         self.ambiguous_verbform = []
@@ -13,15 +14,21 @@ class Tagger(abc.ABC):
         """default normalization"""
         return re.sub(r"^\W+|\W+$", "", word.lower())
 
-    def formality_tags(self, cur_src, cur_src_doc, cur_tgt, cur_tgt_doc, cur_align, prev_formality_tags):
+    def formality_tags(
+        self, cur_src, cur_src_doc, cur_tgt, cur_tgt_doc, cur_align, prev_formality_tags
+    ):
         # TODO: inter-sentential especification needs to be added
         # this would go by checking if the formality already appeared in the context
         # by for example, passing a set of seen formalities in the previsous sentences
         # similar to what happens in lexical cohesion
         # NOTE: every language specific verb formality checker will have to do this aswell
         tags = []
-        #formality_words = [v for vs in self.formality_classes.values() for v in vs]
-        formality_classes = {word : formality for formality, words in self.formality_classes.items() for word in words}
+        # formality_words = [v for vs in self.formality_classes.values() for v in vs]
+        formality_classes = {
+            word: formality
+            for formality, words in self.formality_classes.items()
+            for word in words
+        }
         formality_words = list(formality_classes.keys())
         for word in cur_tgt.split(" "):
             word = self._normalize(word)
@@ -66,10 +73,12 @@ class Tagger(abc.ABC):
                     if cohesion_words[src_lemma][tgt_lemma] > 2:
                         tags[t] = True
                     tmp_cohesion_words[src_lemma][tgt_lemma] += 1
-        
+
             for src_lemma in tmp_cohesion_words.keys():
                 for tgt_lemma in tmp_cohesion_words[src_lemma].keys():
-                    cohesion_words[src_lemma][tgt_lemma] += tmp_cohesion_words[src_lemma][tgt_lemma]
+                    cohesion_words[src_lemma][tgt_lemma] += tmp_cohesion_words[
+                        src_lemma
+                    ][tgt_lemma]
         except IndexError:
             print("cohesion error")
             return [False] * len(target.split(" ")), cohesion_words

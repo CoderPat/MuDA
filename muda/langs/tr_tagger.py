@@ -1,5 +1,6 @@
 from langs.base_tagger import Tagger
 
+
 class TurkishTagger(Tagger):
     def __init__(self):
         super().__init__()

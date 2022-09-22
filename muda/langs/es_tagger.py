@@ -1,5 +1,6 @@
 from langs.base_tagger import Tagger
 
+
 class SpanishTagger(Tagger):
     def __init__(self):
         super().__init__()
@@ -28,7 +29,9 @@ class SpanishTagger(Tagger):
             "es", processors="tokenize,pos,lemma,depparse"
         )
 
-    def verb_formality(self, cur_src, cur_src_doc, cur_tgt, cur_tgt_doc, cur_align, prev_formality_tags):
+    def verb_formality(
+        self, cur_src, cur_src_doc, cur_tgt, cur_tgt_doc, cur_align, prev_formality_tags
+    ):
 
         cur_src = cur_src.split(" ")
         cur_tgt = cur_tgt.split(" ")
@@ -64,4 +67,3 @@ class SpanishTagger(Tagger):
                     else:
                         prev_formality_tags.add("3")
         return tags, prev_formality_tags
-

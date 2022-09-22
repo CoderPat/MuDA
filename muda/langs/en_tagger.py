@@ -2,10 +2,13 @@ import spacy_stanza
 
 from langs.base_tagger import Tagger
 
+
 class EnglishTagger(Tagger):
     def __init__(self):
         super().__init__()
-        en_tagger = spacy_stanza.load_pipeline("en", processors="tokenize,pos,lemma,depparse")
+        en_tagger = spacy_stanza.load_pipeline(
+            "en", processors="tokenize,pos,lemma,depparse"
+        )
 
         from spacy.lang.en.stop_words import STOP_WORDS
 

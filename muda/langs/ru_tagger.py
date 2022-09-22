@@ -1,5 +1,6 @@
 from langs.base_tagger import Tagger
 
+
 class RussianTagger(Tagger):
     def __init__(self):
         super().__init__()

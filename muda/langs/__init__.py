@@ -4,7 +4,7 @@
 __all__ = [
     "base_tagger",
     "ar_tagger",
-    "de_tagger", 
+    "de_tagger",
     "en_tagger",
     "es_tagger",
     "fr_tagger",
@@ -17,5 +17,5 @@ __all__ = [
     "ro_tagger",
     "ru_tagger",
     "tr_tagger",
-    "zh_tagger"
+    "zh_tagger",
 ]

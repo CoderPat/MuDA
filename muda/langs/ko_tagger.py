@@ -1,5 +1,6 @@
 from langs.base_tagger import Tagger
 
+
 class KoreanTagger(Tagger):
     def __init__(self):
         super().__init__()
@@ -27,7 +28,9 @@ class KoreanTagger(Tagger):
             "ko", processors="tokenize,pos,lemma,depparse"
         )
 
-    def verb_formality(self, cur_src, cur_src_doc, cur_tgt, cur_tgt_doc, cur_align, prev_formality_tags):
+    def verb_formality(
+        self, cur_src, cur_src_doc, cur_tgt, cur_tgt_doc, cur_align, prev_formality_tags
+    ):
         tags = []
         for tok in cur_tgt_doc:
             honorific = False
@@ -51,7 +54,7 @@ class KoreanTagger(Tagger):
                         break
             for _ in tok.text.split(" "):
                 if honorific:
-                    if "honorific" in prev_formality_tags: # TODO for Korean specific
+                    if "honorific" in prev_formality_tags:  # TODO for Korean specific
                         tags.append(True)
                     else:
                         tags.append(False)

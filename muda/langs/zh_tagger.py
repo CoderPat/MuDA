@@ -1,5 +1,6 @@
 from langs.base_tagger import Tagger
 
+
 class ChineseTagger(Tagger):
     def __init__(self):
         super().__init__()
@@ -16,6 +17,7 @@ class ChineseTagger(Tagger):
         self.tagger = spacy_stanza.load_pipeline(
             "zh", processors="tokenize,pos,lemma,depparse"
         )
+
 
 class TaiwaneseTagger(Tagger):
     def __init__(self):
