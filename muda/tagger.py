@@ -1,18 +1,18 @@
 import re
 import abc
 import argparse
-import spacy
-import spacy_stanza
+import spacy_stanza  # type: ignore
 from collections import defaultdict
-from allennlp.predictors.predictor import Predictor
+from allennlp.predictors.predictor import Predictor  # type: ignore
 
 en_tagger = spacy_stanza.load_pipeline("en", processors="tokenize,pos,lemma,depparse")
+
 
 class Tagger(abc.ABC):
     """Abstact class that represent a tagger for a language"""
 
     def __init__(self):
-        #self.tagger = spacy.load("xx_ent_wiki_sm")
+        # self.tagger = spacy.load("xx_ent_wiki_sm")
         self.formality_classes = {}
         self.ambiguous_pronouns = None
         self.ambiguous_verbform = []
@@ -21,15 +21,21 @@ class Tagger(abc.ABC):
         """default normalization"""
         return re.sub(r"^\W+|\W+$", "", word.lower())
 
-    def formality_tags(self, cur_src, cur_src_doc, cur_tgt, cur_tgt_doc, cur_align, prev_formality_tags):
+    def formality_tags(
+        self, cur_src, cur_src_doc, cur_tgt, cur_tgt_doc, cur_align, prev_formality_tags
+    ):
         # TODO: inter-sentential especification needs to be added
         # this would go by checking if the formality already appeared in the context
         # by for example, passing a set of seen formalities in the previsous sentences
         # similar to what happens in lexical cohesion
         # NOTE: every language specific verb formality checker will have to do this aswell
         tags = []
-        #formality_words = [v for vs in self.formality_classes.values() for v in vs]
-        formality_classes = {word : formality for formality, words in self.formality_classes.items() for word in words}
+        # formality_words = [v for vs in self.formality_classes.values() for v in vs]
+        formality_classes = {
+            word: formality
+            for formality, words in self.formality_classes.items()
+            for word in words
+        }
         formality_words = list(formality_classes.keys())
         for word in cur_tgt.split(" "):
             word = self._normalize(word)
@@ -74,10 +80,12 @@ class Tagger(abc.ABC):
                     if cohesion_words[src_lemma][tgt_lemma] > 2:
                         tags[t] = True
                     tmp_cohesion_words[src_lemma][tgt_lemma] += 1
-        
+
             for src_lemma in tmp_cohesion_words.keys():
                 for tgt_lemma in tmp_cohesion_words[src_lemma].keys():
-                    cohesion_words[src_lemma][tgt_lemma] += tmp_cohesion_words[src_lemma][tgt_lemma]
+                    cohesion_words[src_lemma][tgt_lemma] += tmp_cohesion_words[
+                        src_lemma
+                    ][tgt_lemma]
         except IndexError:
             print("cohesion error")
             return [False] * len(target.split(" ")), cohesion_words
@@ -93,13 +101,15 @@ class Tagger(abc.ABC):
         tags = []
         for tok in cur_doc:
             tag = False
-            if tok.pos_ == "VERB": 
-                amb_verb_forms = [a for a in tok.morph.get("Tense") if a in self.ambiguous_verbform]
+            if tok.pos_ == "VERB":
+                amb_verb_forms = [
+                    a for a in tok.morph.get("Tense") if a in self.ambiguous_verbform
+                ]
                 for form in set(amb_verb_forms):
                     if form in verb_forms:
-                        tag = True # Set tag to true if ambiguous form appeared before
+                        tag = True  # Set tag to true if ambiguous form appeared before
                     else:
-                        verb_forms.add(form) # Add ambiguous form to memory
+                        verb_forms.add(form)  # Add ambiguous form to memory
             for _ in tok.text.split(" "):
                 tags.append(tag)
         return tags, verb_forms
@@ -151,7 +161,7 @@ class Tagger(abc.ABC):
         except IndexError:
             print("pronoun error")
             return [False] * len(tgt)
-            
+
         return tags
 
     def ellipsis(self, src, ref, align, verbs, nouns, ellipsis_sent):
@@ -394,7 +404,9 @@ class SpanishTagger(Tagger):
             "es", processors="tokenize,pos,lemma,depparse"
         )
 
-    def verb_formality(self, cur_src, cur_src_doc, cur_tgt, cur_tgt_doc, cur_align, prev_formality_tags):
+    def verb_formality(
+        self, cur_src, cur_src_doc, cur_tgt, cur_tgt_doc, cur_align, prev_formality_tags
+    ):
 
         cur_src = cur_src.split(" ")
         cur_tgt = cur_tgt.split(" ")
@@ -578,7 +590,9 @@ class ItalianTagger(Tagger):
             "it", processors="tokenize,pos,lemma,depparse"
         )
 
-    def verb_formality(self, cur_src, cur_src_doc, cur_tgt, cur_tgt_doc, cur_align, prev_formality_tags):
+    def verb_formality(
+        self, cur_src, cur_src_doc, cur_tgt, cur_tgt_doc, cur_align, prev_formality_tags
+    ):
 
         cur_src = cur_src.split(" ")
         cur_tgt = cur_tgt.split(" ")
@@ -643,7 +657,9 @@ class KoreanTagger(Tagger):
             "ko", processors="tokenize,pos,lemma,depparse"
         )
 
-    def verb_formality(self, cur_src, cur_src_doc, cur_tgt, cur_tgt_doc, cur_align, prev_formality_tags):
+    def verb_formality(
+        self, cur_src, cur_src_doc, cur_tgt, cur_tgt_doc, cur_align, prev_formality_tags
+    ):
         tags = []
         for tok in cur_tgt_doc:
             honorific = False
@@ -667,7 +683,7 @@ class KoreanTagger(Tagger):
                         break
             for _ in tok.text.split(" "):
                 if honorific:
-                    if "honorific" in prev_formality_tags: # TODO for Korean specific
+                    if "honorific" in prev_formality_tags:  # TODO for Korean specific
                         tags.append(True)
                     else:
                         tags.append(False)
@@ -836,7 +852,9 @@ def main():
     )
 
     tagger = build_tagger(args.target_lang)
-    en_coref = Predictor.from_path("https://storage.googleapis.com/allennlp-public-models/coref-spanbert-large-2021.03.10.tar.gz")
+    en_coref = Predictor.from_path(
+        "https://storage.googleapis.com/allennlp-public-models/coref-spanbert-large-2021.03.10.tar.gz"
+    )
 
     src_docs = en_tagger.pipe(detok_srcs)
     tgt_docs = tagger.tagger.pipe(detok_tgts)
@@ -900,8 +918,8 @@ def main():
                     for mention in cluster[1:]:
                         for i in range(mention[0], mention[1] + 1):
                             has_ante[i] = True
-            except:
-                failed_coref+=1
+            except BaseException:
+                failed_coref += 1
                 pass
 
             lexical_tags, cohesion_words = tagger.lexical_cohesion(
@@ -927,9 +945,19 @@ def main():
             tags = []
 
             # TODO: fix this
-            if any(len(p_tags) != len(target.split(" ")) for p_tags in (pronouns_tags, formality_tags, ellipsis_tags, ellipsis_tags_filt, posmorph_tags, verb_tags)):
+            if any(
+                len(p_tags) != len(target.split(" "))
+                for p_tags in (
+                    pronouns_tags,
+                    formality_tags,
+                    ellipsis_tags,
+                    ellipsis_tags_filt,
+                    posmorph_tags,
+                    verb_tags,
+                )
+            ):
                 tags = ["all" for _ in range(len(target.split(" ")))]
-                tag_len_mismatch+=1
+                tag_len_mismatch += 1
             else:
                 for i in range(len(lexical_tags)):
                     tag = ["all"]
