@@ -243,7 +243,7 @@ def register_tagger(tagger_name: str) -> Callable:
             raise ValueError("Cannot register duplicate model ({})".format(tagger_name))
         if not issubclass(cls, Tagger):
             raise ValueError(
-                "Model ({}: {}) must extend Explainer".format(tagger_name, cls.__name__)
+                "Model ({}: {}) must extend Tagger".format(tagger_name, cls.__name__)
             )
 
         TAGGER_REGISTRY[tagger_name] = cls
