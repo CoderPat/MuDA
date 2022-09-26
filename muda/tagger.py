@@ -2,7 +2,6 @@ import argparse
 from collections import defaultdict
 from allennlp.predictors.predictor import Predictor  # type: ignore
 import spacy_stanza
-import pdb
 
 from langs import (
     base_tagger,
@@ -21,6 +20,7 @@ from langs import (
     ru_tagger,
     tr_tagger,
     zh_tagger,
+    zh_tw_tagger,
 )
 
 
@@ -41,7 +41,7 @@ def build_tagger(lang) -> base_tagger.Tagger:
         "ru": ru_tagger.RussianTagger,
         "ja": ja_tagger.JapaneseTagger,
         "zh_cn": zh_tagger.ChineseTagger,
-        "zh_tw": zh_tagger.TaiwaneseTagger,
+        "zh_tw": zh_tw_tagger.TaiwaneseTagger,
     }
     return taggers[lang]()
 
@@ -101,7 +101,9 @@ def main():
     )
 
     tagger = build_tagger(args.target_lang)
-    stanza_en_tagger = spacy_stanza.load_pipeline("en", processors="tokenize,pos,lemma,depparse")
+    stanza_en_tagger = spacy_stanza.load_pipeline(
+        "en", processors="tokenize,pos,lemma,depparse"
+    )
     en_coref = Predictor.from_path(
         "https://storage.googleapis.com/allennlp-public-models/coref-spanbert-large-2021.03.10.tar.gz"
     )

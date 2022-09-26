@@ -86,7 +86,7 @@ class Tagger(abc.ABC):
             return [False] * len(target.split(" ")), cohesion_words
 
         return tags, cohesion_words
-    
+
     def verb_form(self, cur_doc, verb_forms):
         # TODO: inter-sentential especification needs to be added
         # this would go by checking if a specific verb_form already appeared in the context
