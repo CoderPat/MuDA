@@ -1,6 +1,8 @@
 import argparse
 from collections import defaultdict
 from allennlp.predictors.predictor import Predictor  # type: ignore
+import spacy_stanza
+import pdb
 
 from langs import (
     base_tagger,
@@ -99,11 +101,12 @@ def main():
     )
 
     tagger = build_tagger(args.target_lang)
+    stanza_en_tagger = spacy_stanza.load_pipeline("en", processors="tokenize,pos,lemma,depparse")
     en_coref = Predictor.from_path(
         "https://storage.googleapis.com/allennlp-public-models/coref-spanbert-large-2021.03.10.tar.gz"
     )
 
-    src_docs = en_tagger.pipe(detok_srcs)
+    src_docs = stanza_en_tagger.pipe(detok_srcs)
     tgt_docs = tagger.tagger.pipe(detok_tgts)
 
     prev_docid = None
