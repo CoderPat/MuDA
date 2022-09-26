@@ -3,47 +3,8 @@ from collections import defaultdict
 from allennlp.predictors.predictor import Predictor  # type: ignore
 import spacy_stanza
 
-from langs import (
-    base_tagger,
-    ar_tagger,
-    de_tagger,
-    en_tagger,
-    es_tagger,
-    fr_tagger,
-    he_tagger,
-    it_tagger,
-    ja_tagger,
-    ko_tagger,
-    nl_tagger,
-    pt_tagger,
-    ro_tagger,
-    ru_tagger,
-    tr_tagger,
-    zh_tagger,
-    zh_tw_tagger,
-)
 
-
-def build_tagger(lang) -> base_tagger.Tagger:
-    taggers = {
-        "en": en_tagger.EnglishTagger,
-        "fr": fr_tagger.FrenchTagger,
-        "pt_br": pt_tagger.PortugueseTagger,
-        "es": es_tagger.SpanishTagger,
-        "de": de_tagger.GermanTagger,
-        "he": he_tagger.HebrewTagger,
-        "nl": nl_tagger.DutchTagger,
-        "ro": ro_tagger.RomanianTagger,
-        "tr": tr_tagger.TurkishTagger,
-        "ar": ar_tagger.ArabicTagger,
-        "it": it_tagger.ItalianTagger,
-        "ko": ko_tagger.KoreanTagger,
-        "ru": ru_tagger.RussianTagger,
-        "ja": ja_tagger.JapaneseTagger,
-        "zh_cn": zh_tagger.ChineseTagger,
-        "zh_tw": zh_tw_tagger.TaiwaneseTagger,
-    }
-    return taggers[lang]()
+from langs import TAGGER_REGISTRY, create_tagger
 
 
 def main():
@@ -68,7 +29,11 @@ def main():
     )
     # parser.add_argument("--polysemous-file", required=True, help="file with polysemous words")
     parser.add_argument("--source-lang", default=None)
-    parser.add_argument("--target-lang", required=True)
+    parser.add_argument(
+        "--target-lang",
+        required=True,
+        choices=[x.replace("_tagger", "") for x in TAGGER_REGISTRY.keys()],
+    )
     parser.add_argument("--source-context-size", type=int, default=None)
     parser.add_argument("--target-context-size", type=int, default=None)
     parser.add_argument("--output", default=None)
@@ -100,7 +65,7 @@ def main():
         )
     )
 
-    tagger = build_tagger(args.target_lang)
+    tagger = create_tagger(args.target_lang)
     stanza_en_tagger = spacy_stanza.load_pipeline(
         "en", processors="tokenize,pos,lemma,depparse"
     )

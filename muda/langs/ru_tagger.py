@@ -1,8 +1,9 @@
 import spacy_stanza
 
-from langs.base_tagger import Tagger
+from . import register_tagger, Tagger
 
 
+@register_tagger("ru_tagger")
 class RussianTagger(Tagger):
     def __init__(self):
         super().__init__()

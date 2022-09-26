@@ -1,8 +1,9 @@
 import spacy_stanza
 
-from langs.base_tagger import Tagger
+from . import register_tagger, Tagger
 
 
+@register_tagger("en_tagger")
 class EnglishTagger(Tagger):
     def __init__(self):
         super().__init__()
