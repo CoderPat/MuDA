@@ -28,7 +28,7 @@ class PortugueseTagger(Tagger):
         self.stop_words = STOP_WORDS
         self.ambiguous_verbform = ["Pqp"]
 
-        # self.tagger = spacy.load("pt_core_news_sm")
-        self.tagger = spacy_stanza.load_pipeline(
+        # self.pipeline = spacy.load("pt_core_news_sm")
+        self.pipeline = spacy_stanza.load_pipeline(
             "pt", processors="tokenize,pos,lemma,depparse"
         )

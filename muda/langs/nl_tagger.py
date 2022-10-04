@@ -16,7 +16,7 @@ class DutchTagger(Tagger):
 
         self.ambiguous_verbform = ["Past"]
         self.stop_words = STOP_WORDS
-        # self.tagger = spacy.load("nl_core_news_sm")
-        self.tagger = spacy_stanza.load_pipeline(
+        # self.pipeline = spacy.load("nl_core_news_sm")
+        self.pipeline = spacy_stanza.load_pipeline(
             "nl", processors="tokenize,pos,lemma,depparse"
         )

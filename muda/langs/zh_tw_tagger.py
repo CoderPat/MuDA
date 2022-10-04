@@ -11,6 +11,6 @@ class TaiwaneseTagger(Tagger):
         from spacy.lang.zh.stop_words import STOP_WORDS
 
         self.stop_words = STOP_WORDS
-        self.tagger = spacy_stanza.load_pipeline(
+        self.pipeline = spacy_stanza.load_pipeline(
             "zh", processors="tokenize,pos,lemma,depparse"
         )

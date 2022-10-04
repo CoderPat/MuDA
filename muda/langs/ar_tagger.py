@@ -27,6 +27,6 @@ class ArabicTagger(Tagger):
             "they": ["هم", "هن", "هما"],
             "them": ["هم", "هن", "هما"],
         }
-        self.tagger = spacy_stanza.load_pipeline(
+        self.pipeline = spacy_stanza.load_pipeline(
             "ar", processors="tokenize,pos,lemma,depparse"
         )

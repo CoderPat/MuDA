@@ -13,6 +13,6 @@ class HebrewTagger(Tagger):
 
         self.stop_words = STOP_WORDS
         self.ambiguous_verbform = ["Pqp", "Imp", "Fut"]
-        self.tagger = spacy_stanza.load_pipeline(
+        self.pipeline = spacy_stanza.load_pipeline(
             "he", processors="tokenize,pos,lemma,depparse"
         )

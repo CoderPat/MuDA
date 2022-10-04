@@ -32,7 +32,7 @@ class JapaneseTagger(Tagger):
         self.ambiguous_pronouns = {
             "i": ["私", "僕", "俺"],
         }
-        # self.tagger = spacy.load("ja_core_news_sm")
-        self.tagger = spacy_stanza.load_pipeline(
+        # self.pipeline = spacy.load("ja_core_news_sm")
+        self.pipeline = spacy_stanza.load_pipeline(
             "ja", processors="tokenize,pos,lemma,depparse"
         )

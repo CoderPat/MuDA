@@ -15,7 +15,7 @@ class RussianTagger(Tagger):
 
         self.stop_words = STOP_WORDS
         self.ambiguous_verbform = ["Past"]
-        # self.tagger = spacy.load("ru_core_web_sm")
-        self.tagger = spacy_stanza.load_pipeline(
+        # self.pipeline = spacy.load("ru_core_web_sm")
+        self.pipeline = spacy_stanza.load_pipeline(
             "ru", processors="tokenize,pos,lemma,depparse"
         )

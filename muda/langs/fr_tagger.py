@@ -39,7 +39,7 @@ class FrenchTagger(Tagger):
         from spacy.lang.fr.stop_words import STOP_WORDS
 
         self.stop_words = STOP_WORDS
-        # self.tagger = spacy.load("fr_core_news_sm")
-        self.tagger = spacy_stanza.load_pipeline(
+        # self.pipeline = spacy.load("fr_core_news_sm")
+        self.pipeline = spacy_stanza.load_pipeline(
             "fr", processors="tokenize,pos,lemma,depparse"
         )

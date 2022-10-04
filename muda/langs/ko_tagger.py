@@ -27,11 +27,11 @@ class KoreanTagger(Tagger):
         from spacy.lang.ko.stop_words import STOP_WORDS
 
         self.stop_words = STOP_WORDS
-        self.tagger = spacy_stanza.load_pipeline(
+        self.pipeline = spacy_stanza.load_pipeline(
             "ko", processors="tokenize,pos,lemma,depparse"
         )
 
-    def verb_formality(
+    def _verb_formality(
         self, cur_src, cur_src_doc, cur_tgt, cur_tgt_doc, cur_align, prev_formality_tags
     ):
         tags = []

@@ -16,6 +16,6 @@ class TurkishTagger(Tagger):
         self.ambiguous_verbform = ["Pqp"]
 
         self.stop_words = STOP_WORDS
-        self.tagger = spacy_stanza.load_pipeline(
+        self.pipeline = spacy_stanza.load_pipeline(
             "tr", processors="tokenize,pos,lemma,depparse"
         )

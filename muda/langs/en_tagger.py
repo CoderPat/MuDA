@@ -7,14 +7,13 @@ from . import register_tagger, Tagger
 class EnglishTagger(Tagger):
     def __init__(self):
         super().__init__()
-        en_tagger = spacy_stanza.load_pipeline(
-            "en", processors="tokenize,pos,lemma,depparse"
-        )
 
         from spacy.lang.en.stop_words import STOP_WORDS
 
         self.stop_words = STOP_WORDS
-        self.tagger = en_tagger
+        self.pipeline = spacy_stanza.load_pipeline(
+            "en", processors="tokenize,pos,lemma,depparse"
+        )
 
         self.pronoun_types = {
             "1sg": {"I", "me", "my", "mine", "myself"},

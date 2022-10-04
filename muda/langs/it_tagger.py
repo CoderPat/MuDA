@@ -25,12 +25,12 @@ class ItalianTagger(Tagger):
         }
         self.ambiguous_verbform = ["Pqp", "Imp", "Fut"]
 
-        # self.tagger = spacy.load("it_core_news_sm")
-        self.tagger = spacy_stanza.load_pipeline(
+        # self.pipeline = spacy.load("it_core_news_sm")
+        self.pipeline = spacy_stanza.load_pipeline(
             "it", processors="tokenize,pos,lemma,depparse"
         )
 
-    def verb_formality(
+    def _verb_formality(
         self, cur_src, cur_src_doc, cur_tgt, cur_tgt_doc, cur_align, prev_formality_tags
     ):
 
