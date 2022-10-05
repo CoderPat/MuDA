@@ -3,7 +3,7 @@ from collections import defaultdict
 from allennlp.predictors.predictor import Predictor  # type: ignore
 import spacy_stanza
 
-
+import pdb
 from langs import TAGGER_REGISTRY, create_tagger
 
 
@@ -138,10 +138,11 @@ def main():
             except BaseException:
                 failed_coref += 1
                 pass
-
+            pdb.set_trace()
             lexical_tags, cohesion_words = tagger.lexical_cohesion(
                 target, cur_src_doc, cur_tgt_doc, align, cohesion_words
             )
+            pdb.set_trace()
             formality_tags, prev_formality_tags = tagger.formality_tags(
                 source, cur_src_doc, target, cur_tgt_doc, align, prev_formality_tags
             )

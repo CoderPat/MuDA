@@ -4,6 +4,7 @@ import re
 import os
 import importlib
 from typing import Callable
+import pdb
 
 TAGGER_REGISTRY = {}
 
@@ -260,7 +261,6 @@ def import_taggers(langdir: str, namespace: str) -> None:
             and (file.endswith(".py") or os.path.isdir(path))
         ):
             tagger_name = file[: file.find(".py")] if file.endswith(".py") else file
-            print(tagger_name)
             importlib.import_module(namespace + "." + tagger_name)
 
 
@@ -272,4 +272,4 @@ def create_tagger(langcode: str) -> Tagger:
 
 
 langdir = os.path.dirname(__file__)
-import_taggers(langdir, "langs")
+import_taggers(langdir, __name__)
