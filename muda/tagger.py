@@ -1,9 +1,9 @@
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Any
 import argparse
 from collections import defaultdict
 from allennlp.predictors.predictor import Predictor  # type: ignore
 import spacy
-import spacy_stanza # type: ignore
+import spacy_stanza  # type: ignore
 import tempfile
 import subprocess
 import inspect
@@ -101,10 +101,17 @@ def build_corefs(src_pproc: List[spacy.tokens.Token]) -> List[List[bool]]:
     return antecs
 
 
-def build_docs(docids: List[int], *args, max_ctx_size: Optional[int] = None) -> Tuple:
+def build_docs(
+    docids: List[int], *args: List[Any], max_ctx_size: Optional[int] = None
+) -> Tuple:
     """Builds "document-level" structures based on docids and sentence-level structures."""
+    assert all(
+        len(x) == len(docids) for x in args
+    ), "all arguments must have the same length"
+
     prev_docid = None
     all_docs = []
+
     for docid, *elements in zip(docids, *args):
         # if first sentence of a new document, reset context
         if prev_docid is None or docid != prev_docid:
@@ -114,6 +121,7 @@ def build_docs(docids: List[int], *args, max_ctx_size: Optional[int] = None) -> 
             prev_docid = docid
 
         doc_elements.append(elements)
+    all_docs.append(list(zip(*doc_elements)))
     return tuple(zip(*all_docs))
 
 
@@ -209,10 +217,11 @@ def main() -> None:
                 assert len(sent_tags) == len(tagged_doc[i])
                 for j, tag in enumerate(sent_tags):
                     if tag:
-                        tagged_doc[i][j].add(tag)
+                        tagged_doc[i][j].add(phenomenon)
         tagged_docs.append(tagged_doc)
-    
+
     # TODO: what to do with the tagged docs?
+    import ipdb; ipdb.set_trace()
 
 if __name__ == "__main__":
     main()

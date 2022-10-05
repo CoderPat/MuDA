@@ -164,16 +164,20 @@ class Tagger(abc.ABC):
                 doc_tags.append(tags)
                 continue
 
-            src_text, src_pos = zip(*[
-                (tok.text, tok.pos_) if not tok.is_punct else (None, None)
-                for tok in src
-                for _ in tok.text.split(" ")
-            ])
-            tgt_idx, tgt_text, tgt_pos = zip(*[
-                (i, *((tok.text, tok.pos_) if not tok.is_punct else (None, None)))
-                for i, tok in enumerate(tgt)
-                for _ in tok.text.split(" ")
-            ])
+            src_text, src_pos = zip(
+                *[
+                    (tok.text, tok.pos_) if not tok.is_punct else (None, None)
+                    for tok in src
+                    for _ in tok.text.split(" ")
+                ]
+            )
+            tgt_idx, tgt_text, tgt_pos = zip(
+                *[
+                    (i, *((tok.text, tok.pos_) if not tok.is_punct else (None, None)))
+                    for i, tok in enumerate(tgt)
+                    for _ in tok.text.split(" ")
+                ]
+            )
 
             for s, r in align.items():
                 if s > len(src_text):
