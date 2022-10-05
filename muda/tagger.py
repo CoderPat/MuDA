@@ -1,15 +1,23 @@
+from typing import List, Dict, Tuple, Optional
 import argparse
 from collections import defaultdict
 from allennlp.predictors.predictor import Predictor  # type: ignore
-import spacy_stanza
+import spacy
+import spacy_stanza # type: ignore
 import tempfile
 import subprocess
+import inspect
 
 
 from langs import TAGGER_REGISTRY, create_tagger
 
 
-def build_alignments(src_pproc, tgt_pproc, model, cache_dir):
+def build_alignments(
+    src_pproc: List[List[spacy.tokens.Token]],
+    tgt_pproc: List[List[spacy.tokens.Token]],
+    model: str,
+    cache_dir: str,
+) -> List[Dict[int, int]]:
     """Builds alignments between source and target sentences."""
 
     data_inf = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8")
@@ -32,7 +40,7 @@ def build_alignments(src_pproc, tgt_pproc, model, cache_dir):
             "--output_file",
             alignment_outf.name,
             "--model_name_or_path",
-            args.awesome_align_model,
+            model,
             "--data_file",
             data_inf.name,
             "--extraction",
@@ -40,7 +48,7 @@ def build_alignments(src_pproc, tgt_pproc, model, cache_dir):
             "--batch_size",
             "32",
             "--cache_dir",
-            args.awesome_align_cachedir,
+            cache_dir,
         ]
     )
     # TODO: check if subproc exited successfully
@@ -63,7 +71,7 @@ def build_alignments(src_pproc, tgt_pproc, model, cache_dir):
     return alignments
 
 
-def build_corefs(src_pproc):
+def build_corefs(src_pproc: List[spacy.tokens.Token]) -> List[List[bool]]:
     """Builds coreference chains for the source (english) sentences."""
     # this is done in order to know which ambiguous pronoun need context to be resolved
     # TODO: encapsulate this as part of the tagger?
@@ -93,7 +101,7 @@ def build_corefs(src_pproc):
     return antecs
 
 
-def build_docs(docids, *args, max_ctx_size=None):
+def build_docs(docids: List[int], *args, max_ctx_size: Optional[int] = None) -> Tuple:
     """Builds "document-level" structures based on docids and sentence-level structures."""
     prev_docid = None
     all_docs = []
@@ -109,31 +117,32 @@ def build_docs(docids, *args, max_ctx_size=None):
     return tuple(zip(*all_docs))
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
 
     # base arguments
     parser.add_argument("--src", required=True, help="File with source sentences")
     parser.add_argument("--tgt", required=True, help="File with target sentences")
     parser.add_argument("--docids", required=True, help="File with document ids")
-    parser.add_argument("--output", default=None)
     parser.add_argument(
         "--tgt-lang",
         required=True,
         choices=[x.replace("_tagger", "") for x in TAGGER_REGISTRY.keys()],
+        help="Target language. Used to select the correct tagger.",
     )
     parser.add_argument("--max-ctx-size", type=int, default=None)
     parser.add_argument(
         "--phenomena",
         nargs="+",
-        default=["lexical_cohesion", "formality", "verb_form", "pronouns", "pos_morph"],
+        default=["lexical_cohesion", "formality", "verb_form", "pronouns"],
+        help="Phenomena to tag. By default, all phenomena are tagged.",
     )
 
     # aligner arguments
     parser.add_argument(
         "--awesome-align-model",
         default="bert-base-multilingual-cased",
-        help="Model to use for src-tgt alignment",
+        help="Awesome-align model to use. Default: bert-base-multilingual-cased",
     )
     parser.add_argument(
         "--awesome-align-cachedir",
@@ -148,7 +157,7 @@ def main():
     with open(args.tgt, "r", encoding="utf-8") as tgt_f:
         tgts = [line.strip() for line in tgt_f]
     with open(args.docids, "r", encoding="utf-8") as docids_f:
-        docids = [idx for idx in docids_f]
+        docids = [int(idx) for idx in docids_f]
 
     # create taggers
     # currently src language is fixed to English
@@ -172,64 +181,38 @@ def main():
         docids, src_pproc, tgt_pproc, antecs, alignments, max_ctx_size=args.max_ctx_size
     )
 
-    import pdb
-
-    pdb.set_trace()
-
-    tag_len_mismatch = 0
-    with open(args.output, "w", encoding="utf-8") as output_file:
-        for src_doc, tgt_doc, antecs_doc, align_doc in zip(
-            src_docs_tagged, tgt_docs_tagged, antecs_docs, align_docs
-        ):
-            kwargs = {
-                "src_doc": src_doc,
-                "tgt_doc": tgt_doc,
-                "antecs_doc": antecs_doc,
-                "align_doc": align_doc,
-            }
-            all_tags = []
-            for phenomenon in args.phenomena:
-                assert hasattr(tgt_tagger, phenomenon)
-                phenomenon_fn = getattr(tgt_tagger, phenomenon)
-                all_tags.append(
-                    phenomenon(
-                        **{
-                            k: v
-                            for k, v in kwargs.items()
-                            if k in inspect.signature(phenomenon_fn).parameters
-                        }
-                    )
-                )
-            import idpb
-
-            ipdb.set_trace()
-
-            for i in range(len(lexical_tags)):
-                tag = ["all"]
-
-                if pronouns_tags[i]:
-                    tag.append("pronouns")
-                if formality_tags[i]:
-                    tag.append("formality")
-                if verb_tags[i]:
-                    tag.append("verb_tense")
-                if ellipsis_tags[i]:
-                    tag.append("ellipsis")
-                if ellipsis_tags_filt[i]:
-                    tag.append("ellipsis_filt")
-                if lexical_tags[i]:
-                    tag.append("lexical")
-                if len(tag) == 1:
-                    tag.append("no_tag")
-                tag.append(posmorph_tags[i])
-                tags.append("+".join(tag))
-
-            assert len(tags) == len(target.split(" "))
-            print(" ".join(tags), file=output_file)
-
-        print(f"corref_errors: {failed_coref}/{len(srcs)}")
-        print(f"tagmismatch_errors: {tag_len_mismatch}/{len(srcs)}")
-
+    tagged_docs = []
+    for src_doc, tgt_doc, antecs_doc, align_doc in zip(
+        src_docs_tagged, tgt_docs_tagged, antecs_docs, align_docs
+    ):
+        # To avoid having to specify the arguments needed for each phenomena, we use a dictionary
+        # with all the arguments needed for each possible phenomena
+        kwargs = {
+            "src_doc": src_doc,
+            "tgt_doc": tgt_doc,
+            "antecs_doc": antecs_doc,
+            "align_doc": align_doc,
+        }
+        tagged_doc = [[set() for _ in tgt] for tgt in tgt_doc]
+        for phenomenon in args.phenomena:
+            assert hasattr(tgt_tagger, phenomenon), "Phenomenon doesn't exist"
+            phenomenon_fn = getattr(tgt_tagger, phenomenon)
+            # we call it with the arguments it needs
+            tags = phenomenon_fn(
+                **{
+                    k: v
+                    for k, v in kwargs.items()
+                    if k in inspect.signature(phenomenon_fn).parameters
+                }
+            )
+            for i, sent_tags in enumerate(tags):
+                assert len(sent_tags) == len(tagged_doc[i])
+                for j, tag in enumerate(sent_tags):
+                    if tag:
+                        tagged_doc[i][j].add(tag)
+        tagged_docs.append(tagged_doc)
+    
+    # TODO: what to do with the tagged docs?
 
 if __name__ == "__main__":
     main()

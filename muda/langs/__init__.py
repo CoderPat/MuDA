@@ -1,9 +1,11 @@
+from typing import List, Dict, Set
 import abc
 from collections import defaultdict
 import re
 import os
 import importlib
 from typing import Callable
+import spacy
 
 TAGGER_REGISTRY = {}
 
@@ -11,16 +13,21 @@ TAGGER_REGISTRY = {}
 class Tagger(abc.ABC):
     """Abstact class that represent a tagger for a (target) language"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.formality_classes = {}
         self.ambiguous_pronouns = None
         self.ambiguous_verbform = []
 
-    def _normalize(self, word):
+    def _normalize(self, word: str) -> str:
         """default normalization"""
         return re.sub(r"^\W+|\W+$", "", word.lower())
 
-    def formality(self, src_doc, tgt_doc, align_doc):
+    def formality(
+        self,
+        src_doc: List[List[spacy.tokens.Token]],
+        tgt_doc: List[List[spacy.tokens.Token]],
+        align_doc: List[Dict[int, int]],
+    ) -> List[List[bool]]:
         """TODO: add documentation"""
         doc_tags = []
         formality_classes = {
@@ -30,7 +37,7 @@ class Tagger(abc.ABC):
         }
         formality_words = list(formality_classes.keys())
         prev_formality = set()
-        for src, tgt in zip(src_doc, tgt_doc):
+        for src, tgt, align in zip(src_doc, tgt_doc, align_doc):
             tags = []
             for word in tgt:
                 if word.text in formality_words:
@@ -45,7 +52,7 @@ class Tagger(abc.ABC):
                     tags.append(False)
 
                 try:
-                    verb_tags = self._verb_formality(src, tgt, align_doc)
+                    verb_tags = self._verb_formality(src, tgt, align, prev_formality)
                     assert len(tags) == len(verb_tags)
                     tags = [a or b for a, b in zip(tags, verb_tags)]
                 except NotImplementedError:
@@ -55,11 +62,17 @@ class Tagger(abc.ABC):
 
         return doc_tags
 
-    def _verb_formality(self, src_sent, tgt_sent, prev_formality):
+    def _verb_formality(
+        self,
+        src_sent: List[spacy.tokens.Token],
+        tgt_sent: List[spacy.tokens.Token],
+        align: Dict[int, int],
+        prev_formality: Set[str],
+    ) -> List[bool]:
         """TODO: add documentation"""
         raise NotImplementedError()
 
-    def verb_form(self, tgt_doc):
+    def verb_form(self, tgt_doc: List[List[spacy.tokens.Token]]) -> List[List[bool]]:
         """TODO: add documentation"""
         doc_tags = []
         verb_forms = set()
@@ -78,30 +91,40 @@ class Tagger(abc.ABC):
                             tag = True  # Set tag to true if ambiguous form appeared before
                         else:
                             verb_forms.add(form)  # Add ambiguous form to memory
-                for _ in tok.text.split(" "):
-                    tags.append(tag)
+
+                tags.append(tag)
 
             doc_tags.append(tags)
 
         return doc_tags
 
-    def lexical_cohesion(self, src_doc, tgt_doc, align_doc, cohesion_threshold=2):
+    def lexical_cohesion(
+        self,
+        src_doc: List[List[spacy.tokens.Token]],
+        tgt_doc: List[List[spacy.tokens.Token]],
+        align_doc: List[List[spacy.tokens.Token]],
+        cohesion_threshold: int = 2,
+    ) -> List[List[bool]]:
         """TODO: add documentation"""
         doc_tags = []
         cohesion_words = defaultdict(lambda: defaultdict(lambda: 0))
         for src, tgt, align in zip(src_doc, tgt_doc, align_doc):
+            tags = [False] * len(tgt)
+
             # get non-stopwords
+            # TODO: check if we still need `tok.text.split(" ")` or why it was added
             src_lemmas = [
                 t if not tok.is_stop and not tok.is_punct else None
                 for tok in src
                 for t in tok.text.split(" ")
             ]
-            tgt_lemmas = [
-                t if not tok.is_stop and not tok.is_punct else None
-                for tok in tgt
-                for t in tok.text.split(" ")
-            ]
-            tags = [False] * len(tgt_lemmas)
+            lemmas_idx, tgt_lemmas = zip(
+                *[
+                    (i, t if not tok.is_stop and not tok.is_punct else None)
+                    for i, tok in enumerate(tgt)
+                    for t in tok.text.split(" ")
+                ]
+            )
 
             tmp_cohesion_words = defaultdict(lambda: defaultdict(lambda: 0))
             for s, t in align.items():
@@ -111,8 +134,8 @@ class Tagger(abc.ABC):
                 # `cohesion_threshold` times in previous sentences
                 # and update the temporary cohesion words dictionary
                 if src_lemma is not None and tgt_lemma is not None:
-                    if cohesion_words[src_lemma][tgt_lemma] > 2:
-                        tags[t] = True
+                    if cohesion_words[src_lemma][tgt_lemma] > cohesion_threshold:
+                        tags[lemmas_idx[t]] = True
                     tmp_cohesion_words[src_lemma][tgt_lemma] += 1
 
             # update global cohesion words with the temporary dictionary
@@ -126,7 +149,13 @@ class Tagger(abc.ABC):
 
         return doc_tags
 
-    def pronouns(self, src_doc, tgt_doc, align_doc, antecs_doc):
+    def pronouns(
+        self,
+        src_doc: List[List[spacy.tokens.Token]],
+        tgt_doc: List[List[spacy.tokens.Token]],
+        align_doc: List[Dict[int, int]],
+        antecs_doc: List[List[bool]],
+    ) -> List[List[bool]]:
         """TODO: add documentation"""
         doc_tags = []
         for src, tgt, align, antecs in zip(src_doc, tgt_doc, align_doc, antecs_doc):
@@ -135,42 +164,30 @@ class Tagger(abc.ABC):
                 doc_tags.append(tags)
                 continue
 
-            src_text = [
-                tok.text if not tok.is_punct else None
+            src_text, src_pos = zip(*[
+                (tok.text, tok.pos_) if not tok.is_punct else (None, None)
                 for tok in src
                 for _ in tok.text.split(" ")
-            ]
-            src_pos = [
-                tok.pos_ if not tok.is_punct else None
-                for tok in src
+            ])
+            tgt_idx, tgt_text, tgt_pos = zip(*[
+                (i, *((tok.text, tok.pos_) if not tok.is_punct else (None, None)))
+                for i, tok in enumerate(tgt)
                 for _ in tok.text.split(" ")
-            ]
-            tgt_text = [
-                tok.text if not tok.is_punct else None
-                for tok in tgt
-                for _ in tok.text.split(" ")
-            ]
-            tgt_pos = [
-                tok.pos_ if not tok.is_punct else None
-                for tok in tgt
-                for _ in tok.text.split(" ")
-            ]
+            ])
 
             for s, r in align.items():
-                # if self._normalize(src[s]) in self.src_neutral_pronouns:
-                #     if self._normalize(ref[r]) in self.tgt_gendered_pronouns:
-                if s > len(src):
-                    print(f"IndexError{s}: {src}")
-                if r > len(tgt):
-                    print(f"IndexError{r}: {tgt}")
+                if s > len(src_text):
+                    print(f"IndexError{s}: {src_text}")
+                if r > len(tgt_text):
+                    print(f"IndexError{r}: {tgt_text}")
                 if (
                     not antecs[s]
                     and src_pos[s] == "PRON"
                     and tgt_pos[r] == "PRON"
-                    and self._normalize(tgt[r])
-                    in self.ambiguous_pronouns.get(self._normalize(src[s]), [])
+                    and self._normalize(tgt_text[r])
+                    in self.ambiguous_pronouns.get(self._normalize(src_text[s]), [])
                 ):
-                    tags[r] = True
+                    tags[tgt_idx[r]] = True
             doc_tags.append(tags)
 
         return doc_tags
@@ -191,12 +208,10 @@ class Tagger(abc.ABC):
                     m_tag = tok.morph.get("Tense")
                     if len(m_tag) > 0:
                         tag += "+" + "VERB." + ".".join(m_tag)
-                for _ in tok.text.split(" "):
-                    tags.append(tag)
 
-            assert len(tags) == len(tgt.split(" "))
+                tags.append(tag)
+
             doc_tags.append(tags)
-
         return doc_tags
 
 
