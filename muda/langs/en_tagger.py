@@ -1,17 +1,19 @@
-import spacy_stanza
+import spacy_stanza  # type: ignore
 
-from . import register_tagger, Tagger
+from muda import Tagger
+
+from . import register_tagger
 
 
 @register_tagger("en_tagger")
 class EnglishTagger(Tagger):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         from spacy.lang.en.stop_words import STOP_WORDS
 
         self.stop_words = STOP_WORDS
-        self.pipeline = spacy_stanza.load_pipeline(
+        self.tgt_pipeline = spacy_stanza.load_pipeline(
             "en", processors="tokenize,pos,lemma,depparse"
         )
 

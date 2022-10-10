@@ -1,12 +1,14 @@
-import spacy_stanza
+import spacy_stanza  # type: ignore
 
-from . import register_tagger, Tagger
+from muda import Tagger
+
+from . import register_tagger
 
 
 @register_tagger("de_tagger")
 class GermanTagger(Tagger):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.formality_classes = {
             "t_class": {"du"},
             "v_class": {"sie"},  # formal 2nd person Sie is usually capitalized
@@ -20,6 +22,6 @@ class GermanTagger(Tagger):
         # self.ambiguous_verbform = ["Pqp", "Imp", "Fut"]
 
         self.stop_words = STOP_WORDS
-        self.pipeline = spacy_stanza.load_pipeline(
+        self.tgt_pipeline = spacy_stanza.load_pipeline(
             "de", processors="tokenize,pos,lemma,depparse"
         )

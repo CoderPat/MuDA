@@ -1,12 +1,14 @@
-import spacy_stanza
+import spacy_stanza  # type: ignore
 
-from . import register_tagger, Tagger
+from muda import Tagger
+
+from . import register_tagger
 
 
 @register_tagger("es_tagger")
 class SpanishTagger(Tagger):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         # TODO: usted/su/sus/suyo/suya works for V class and 3rd person
         self.formality_classes = {
             "t_class": {"tú", "tu", "tus", "ti", "contigo", "tuyo", "te", "tuya"},
@@ -27,8 +29,8 @@ class SpanishTagger(Tagger):
         self.ambiguous_verbform = ["Pqp", "Imp", "Fut"]
 
         self.stop_words = STOP_WORDS
-        # self.pipeline = spacy.load("es_core_news_sm")
-        self.pipeline = spacy_stanza.load_pipeline(
+        # self.tgt_pipeline = spacy.load("es_core_news_sm")
+        self.tgt_pipeline = spacy_stanza.load_pipeline(
             "es", processors="tokenize,pos,lemma,depparse"
         )
 

@@ -1,12 +1,14 @@
-import spacy_stanza
+import spacy_stanza  # type: ignore
 
-from . import register_tagger, Tagger
+from muda import Tagger
+
+from . import register_tagger
 
 
 @register_tagger("ar_tagger")
 class ArabicTagger(Tagger):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         from spacy.lang.ar.stop_words import STOP_WORDS
 
@@ -27,6 +29,6 @@ class ArabicTagger(Tagger):
             "they": ["هم", "هن", "هما"],
             "them": ["هم", "هن", "هما"],
         }
-        self.pipeline = spacy_stanza.load_pipeline(
+        self.tgt_pipeline = spacy_stanza.load_pipeline(
             "ar", processors="tokenize,pos,lemma,depparse"
         )
