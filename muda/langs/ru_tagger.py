@@ -1,3 +1,4 @@
+from typing import Any
 import spacy_stanza  # type: ignore
 
 from muda import Tagger
@@ -7,7 +8,7 @@ from . import register_tagger
 
 @register_tagger("ru_tagger")
 class RussianTagger(Tagger):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.formality_classes = {
             "t_class": {"ты", "тебя", "тебе", "тобой", "твой", "твоя", "твои", "тебе"},

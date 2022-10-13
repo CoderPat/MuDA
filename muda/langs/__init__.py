@@ -1,16 +1,16 @@
+from typing import Type, Dict, Any, Callable
 import importlib
 import os
-from typing import Callable
 
 from muda.tagger import Tagger
 
-TAGGER_REGISTRY = {}
+TAGGER_REGISTRY: Dict[str, Type[Tagger]] = {}
 
 
-def register_tagger(tagger_name: str) -> Callable:
+def register_tagger(tagger_name: str) -> Callable[[Type[Tagger]], None]:
     tagger_name = tagger_name.lower()
 
-    def register_tagger_cls(cls):
+    def register_tagger_cls(cls: Type[Tagger]) -> None:
         if tagger_name in TAGGER_REGISTRY:
             raise ValueError("Cannot register duplicate model ({})".format(tagger_name))
         if not issubclass(cls, Tagger):
@@ -35,7 +35,7 @@ def import_taggers(langdir: str, namespace: str) -> None:
             importlib.import_module(namespace + "." + tagger_name)
 
 
-def create_tagger(langcode: str, **kwargs) -> Tagger:
+def create_tagger(langcode: str, **kwargs: Any) -> Tagger:
     # standardize tagger name by langcode
     tagger_name = f"{langcode}_tagger"
     tagger = TAGGER_REGISTRY[tagger_name](**kwargs)

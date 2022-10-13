@@ -1,3 +1,4 @@
+from typing import Any
 import spacy_stanza  # type: ignore
 
 from muda import Tagger
@@ -7,7 +8,7 @@ from . import register_tagger
 
 @register_tagger("jp_tagger")
 class JapaneseTagger(Tagger):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         # Formality verb forms from https://www.aclweb.org/anthology/D19-5203.pdf adapted to stanza tokens
         self.formality_classes = {

@@ -1,3 +1,4 @@
+from typing import Any
 import spacy_stanza  # type: ignore
 
 from muda import Tagger
@@ -7,7 +8,7 @@ from . import register_tagger
 
 @register_tagger("zh_tagger")
 class ChineseTagger(Tagger):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
         from spacy.lang.zh.stop_words import STOP_WORDS

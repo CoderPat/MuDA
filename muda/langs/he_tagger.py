@@ -1,3 +1,4 @@
+from typing import Any
 import spacy_stanza  # type: ignore
 
 from muda import Tagger
@@ -7,7 +8,7 @@ from . import register_tagger
 
 @register_tagger("he_tagger")
 class HebrewTagger(Tagger):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         # TODO: hebrew has t-v distinction only in extreme formality cases
 

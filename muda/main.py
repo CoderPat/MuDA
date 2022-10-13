@@ -26,7 +26,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--dump-tags",
-        default=None,
+        required=True,  # This might change when MuDA has other functionalities
         help="If set, dumps the tags to the specified file.",
     )
 

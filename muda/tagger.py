@@ -7,23 +7,23 @@ from collections import defaultdict
 from typing import Any, Dict, List, Set, Tuple
 
 import spacy
-import spacy_stanza  # type: ignore 
-from allennlp.predictors.predictor import Predictor  # type: ignore
+import spacy_stanza  # type: ignore
+from allennlp.predictors.predictor import Predictor
 
-Document = List[List[spacy.tokens.Token]]
+Document = List[spacy.tokens.doc.Doc]
 Alignment = List[Dict[int, int]]
 Antecs = List[List[bool]]
 
 
-def build_docs(docids: List[int], *args: List[Any]) -> Tuple:
+def build_docs(docids, *args):  # type: ignore
     """Builds "document-level" structures based on docids and sentence-level structures."""
     assert all(
         len(x) == len(docids) for x in args
     ), "all arguments must have the same length"
 
     prev_docid = None
-    doc_elements = []
-    all_docs = []
+    doc_elements: List[Any] = []
+    all_docs: List[List[Any]] = []
 
     for docid, *elements in zip(docids, *args):
         # if first sentence of a new document, reset context
@@ -57,10 +57,10 @@ class Tagger(abc.ABC):
         )
 
         # override this in subclasses
-        self.tgt_pipeline: spacy.pipe.Pipe = None  # TODO: replace with correct pipeline type
-        self.formality_classes = {}
-        self.ambiguous_pronouns = None
-        self.ambiguous_verbform = []
+        self.tgt_pipeline: spacy.language.Language
+        self.formality_classes: Dict[str, Set[str]] = {}
+        self.ambiguous_pronouns: Dict[str, List[str]] = {}
+        self.ambiguous_verbform: List[str] = []
 
         self.align_model = align_model
         self.align_cachedir = align_cachedir
@@ -98,7 +98,7 @@ class Tagger(abc.ABC):
         alignments = self._build_alignments(src_pproc, tgt_pproc)
         antecs = self._build_corefs(src_pproc)
 
-        return build_docs(docids, src_pproc, tgt_pproc, antecs, alignments)
+        return build_docs(docids, src_pproc, tgt_pproc, antecs, alignments)  # type: ignore
 
     def tag(
         self,
@@ -133,7 +133,7 @@ class Tagger(abc.ABC):
             "antecs_doc": antecs_doc,
             "align_doc": align_doc,
         }
-        tagged_doc = [[[] for _ in tgt] for tgt in tgt_doc]
+        tagged_doc: List[List[List[str]]] = [[[] for _ in tgt] for tgt in tgt_doc]
         for phenomenon in phenomena:
             assert hasattr(self, phenomenon), "Phenomenon doesn't exist"
             phenomenon_fn = getattr(self, phenomenon)
@@ -152,7 +152,7 @@ class Tagger(abc.ABC):
                         tagged_doc[i][j].append(phenomenon)
         return tagged_doc
 
-    def _build_corefs(self, src_pproc: List[spacy.tokens.Token]) -> List[List[bool]]:
+    def _build_corefs(self, src_pproc: List[spacy.tokens.doc.Doc]) -> List[List[bool]]:
         """Builds coreference chains for the source (english) sentences."""
         # this is done in order to know which ambiguous pronoun need context to be resolved
         # TODO: encapsulate this as part of the tagger?
@@ -183,8 +183,8 @@ class Tagger(abc.ABC):
 
     def _build_alignments(
         self,
-        src_pproc: List[List[spacy.tokens.Token]],
-        tgt_pproc: List[List[spacy.tokens.Token]],
+        src_pproc: List[spacy.tokens.doc.Doc],
+        tgt_pproc: List[spacy.tokens.doc.Doc],
     ) -> List[Dict[int, int]]:
         """Builds alignments between source and target sentences."""
         # TODO: refactor this to use HFs rather than subprocess
@@ -286,8 +286,8 @@ class Tagger(abc.ABC):
 
     def _verb_formality(
         self,
-        src_sent: List[spacy.tokens.Token],
-        tgt_sent: List[spacy.tokens.Token],
+        src_sent: spacy.tokens.doc.Doc,
+        tgt_sent: spacy.tokens.doc.Doc,
         align_sent: Dict[int, int],
         prev_formality: Set[str],
     ) -> List[bool]:
@@ -338,7 +338,9 @@ class Tagger(abc.ABC):
     ) -> List[List[bool]]:
         """TODO: add documentation"""
         doc_tags = []
-        cohesion_words = defaultdict(lambda: defaultdict(lambda: 0))
+        cohesion_words: Dict[str, Dict[str, int]] = defaultdict(
+            lambda: defaultdict(lambda: 0)
+        )
         for src, tgt, align in zip(src_doc, tgt_doc, align_doc):
             tags = [False] * len(tgt)
 
@@ -357,7 +359,9 @@ class Tagger(abc.ABC):
                 ]
             )
 
-            tmp_cohesion_words = defaultdict(lambda: defaultdict(lambda: 0))
+            tmp_cohesion_words: Dict[str, Dict[str, int]] = defaultdict(
+                lambda: defaultdict(lambda: 0)
+            )
             for s, t in align.items():
                 src_lemma = src_lemmas[s]
                 tgt_lemma = tgt_lemmas[t]
@@ -391,7 +395,7 @@ class Tagger(abc.ABC):
         doc_tags = []
         for src, tgt, align, antecs in zip(src_doc, tgt_doc, align_doc, antecs_doc):
             tags = [False] * len(tgt)
-            if self.ambiguous_pronouns is None:
+            if not self.ambiguous_pronouns:
                 doc_tags.append(tags)
                 continue
 

@@ -21,9 +21,9 @@ pip install -r requirements.txt
 ## Example Usage
 
 ```bash
-python muda/tagger.py \
-    --src example_data/dev.en \
-    --tgt example_data/dev.de \
-    --docids example_data/dev.docids 
+python muda/main.py \
+    --src example_data/maia/en-de/agent.en \
+    --tgt example_data/maia/en-de/agent.de \
+    --docids example_data/maia/en-de/agent.docids \
     --tgt-lang de
 ```
