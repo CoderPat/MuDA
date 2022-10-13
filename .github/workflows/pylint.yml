@@ -39,3 +39,7 @@ jobs:
       run: |
         # stop the build if there are type errors
         mypy --strict muda/
+    - name: Integration testing
+      run: |
+        # run all tests
+        pytest
