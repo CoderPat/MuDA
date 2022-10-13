@@ -1,12 +1,15 @@
-import spacy_stanza
+from typing import Any
+import spacy_stanza  # type: ignore
 
-from . import register_tagger, Tagger
+from muda import Tagger
+
+from . import register_tagger
 
 
 @register_tagger("pt_tagger")
 class PortugueseTagger(Tagger):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
         # TODO: this is incomplete
         # TODO: shit I think brazilian rules are different
         self.formality_classes = {
@@ -28,7 +31,7 @@ class PortugueseTagger(Tagger):
         self.stop_words = STOP_WORDS
         self.ambiguous_verbform = ["Pqp"]
 
-        # self.tagger = spacy.load("pt_core_news_sm")
-        self.tagger = spacy_stanza.load_pipeline(
+        # self.tgt_pipeline = spacy.load("pt_core_news_sm")
+        self.tgt_pipeline = spacy_stanza.load_pipeline(
             "pt", processors="tokenize,pos,lemma,depparse"
         )

@@ -1,12 +1,15 @@
-import spacy_stanza
+from typing import Any
+import spacy_stanza  # type: ignore
 
-from . import register_tagger, Tagger
+from muda import Tagger
+
+from . import register_tagger
 
 
 @register_tagger("nl_tagger")
 class DutchTagger(Tagger):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
         # Source: https://en.wikipedia.org/wiki/T%E2%80%93V_distinction_in_the_world%27s_languages#Dutch
         self.formality_classes = {
             "t_class": {"jij", "jouw", "jou", "jullie", "je"},
@@ -16,7 +19,7 @@ class DutchTagger(Tagger):
 
         self.ambiguous_verbform = ["Past"]
         self.stop_words = STOP_WORDS
-        # self.tagger = spacy.load("nl_core_news_sm")
-        self.tagger = spacy_stanza.load_pipeline(
+        # self.tgt_pipeline = spacy.load("nl_core_news_sm")
+        self.tgt_pipeline = spacy_stanza.load_pipeline(
             "nl", processors="tokenize,pos,lemma,depparse"
         )

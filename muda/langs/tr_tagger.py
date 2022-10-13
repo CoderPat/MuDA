@@ -1,12 +1,15 @@
-import spacy_stanza
+from typing import Any
+import spacy_stanza  # type: ignore
 
-from . import register_tagger, Tagger
+from muda import Tagger
+
+from . import register_tagger
 
 
 @register_tagger("tr_tagger")
 class TurkishTagger(Tagger):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
         self.formality_classes = {
             "t_class": {"sen", "senin"},
             "v_class": {"siz", "sizin"},
@@ -16,6 +19,6 @@ class TurkishTagger(Tagger):
         self.ambiguous_verbform = ["Pqp"]
 
         self.stop_words = STOP_WORDS
-        self.tagger = spacy_stanza.load_pipeline(
+        self.tgt_pipeline = spacy_stanza.load_pipeline(
             "tr", processors="tokenize,pos,lemma,depparse"
         )

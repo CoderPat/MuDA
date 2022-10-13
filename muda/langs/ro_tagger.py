@@ -1,12 +1,15 @@
-import spacy_stanza
+from typing import Any
+import spacy_stanza  # type: ignore
 
-from . import register_tagger, Tagger
+from muda import Tagger
+
+from . import register_tagger
 
 
 @register_tagger("ro_tagger")
 class RomanianTagger(Tagger):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
         self.formality_classes = {
             "t_class": {
                 "tu",
@@ -41,7 +44,7 @@ class RomanianTagger(Tagger):
         }
         self.ambiguous_verbform = ["Past", "Imp", "Fut"]
         self.stop_words = STOP_WORDS
-        # self.tagger = spacy.load("ro_core_news_sm")
-        self.tagger = spacy_stanza.load_pipeline(
+        # self.tgt_pipeline = spacy.load("ro_core_news_sm")
+        self.tgt_pipeline = spacy_stanza.load_pipeline(
             "ro", processors="tokenize,pos,lemma,depparse"
         )

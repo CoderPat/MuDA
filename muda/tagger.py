@@ -1,209 +1,432 @@
-import argparse
+import abc
+import inspect
+import re
+import subprocess
+import tempfile
 from collections import defaultdict
-from allennlp.predictors.predictor import Predictor  # type: ignore
-import spacy_stanza
+from typing import Any, Dict, List, Set, Tuple
+
+import spacy
+import spacy_stanza  # type: ignore
+from allennlp.predictors.predictor import Predictor
+
+Document = List[spacy.tokens.doc.Doc]
+Alignment = List[Dict[int, int]]
+Antecs = List[List[bool]]
 
 
-from langs import TAGGER_REGISTRY, create_tagger
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--src-tok-file", required=True, help="")
-    parser.add_argument("--tgt-tok-file", required=True, help="")
-    parser.add_argument("--src-detok-file", required=True, help="")
-    parser.add_argument("--tgt-detok-file", required=True, help="")
-    parser.add_argument(
-        "--ellipsis-file",
-        default="/projects/tir4/users/kayoy/contextual-mt/data-with-de/ellipsis-nofrag.en",
-        help="file with source ellipsis bools",
-    )
-    parser.add_argument(
-        "--ellipsis-filt-file",
-        default="/projects/tir4/users/kayoy/contextual-mt/data-with-de/ellipsis.manual.en",
-        help="file with source ellipsis bools",
-    )
-    parser.add_argument("--docids-file", required=True, help="file with document ids")
-    parser.add_argument(
-        "--alignments-file", required=True, help="file with word alignments"
-    )
-    # parser.add_argument("--polysemous-file", required=True, help="file with polysemous words")
-    parser.add_argument("--source-lang", default=None)
-    parser.add_argument(
-        "--target-lang",
-        required=True,
-        choices=[x.replace("_tagger", "") for x in TAGGER_REGISTRY.keys()],
-    )
-    parser.add_argument("--source-context-size", type=int, default=None)
-    parser.add_argument("--target-context-size", type=int, default=None)
-    parser.add_argument("--output", default=None)
-    args = parser.parse_args()
-
-    with open(args.src_tok_file, "r", encoding="utf-8") as src_f:
-        srcs = [line.strip() for line in src_f]
-    with open(args.tgt_tok_file, "r", encoding="utf-8") as tgt_f:
-        tgts = [line.strip() for line in tgt_f]
-    with open(args.ellipsis_file, "r", encoding="utf-8") as file:
-        ellipsis_sents = [line.split("|||")[0].strip() == "True" for line in file]
-    with open(args.ellipsis_filt_file, "r", encoding="utf-8") as file:
-        ellipsis_sents_filt = [line.split("|||")[0].strip() == "True" for line in file]
-    with open(args.src_detok_file, "r", encoding="utf-8") as src_f:
-        detok_srcs = [line.strip() for line in src_f]
-    with open(args.tgt_detok_file, "r", encoding="utf-8") as tgt_f:
-        detok_tgts = [line.strip() for line in tgt_f]
-    with open(args.docids_file, "r", encoding="utf-8") as docids_f:
-        docids = [idx for idx in docids_f]
-    with open(args.alignments_file, "r", encoding="utf-8") as file:
-        alignments = file.readlines()
-
-    alignments = list(
-        map(
-            lambda x: dict(
-                list(map(lambda y: list(map(int, y.split("-"))), x.strip().split(" ")))
-            ),
-            alignments,
-        )
-    )
-
-    tagger = create_tagger(args.target_lang)
-    stanza_en_tagger = spacy_stanza.load_pipeline(
-        "en", processors="tokenize,pos,lemma,depparse"
-    )
-    en_coref = Predictor.from_path(
-        "https://storage.googleapis.com/allennlp-public-models/coref-spanbert-large-2021.03.10.tar.gz"
-    )
-
-    src_docs = stanza_en_tagger.pipe(detok_srcs)
-    tgt_docs = tagger.tagger.pipe(detok_tgts)
+def build_docs(docids, *args):  # type: ignore
+    """Builds "document-level" structures based on docids and sentence-level structures."""
+    assert all(
+        len(x) == len(docids) for x in args
+    ), "all arguments must have the same length"
 
     prev_docid = None
-    failed_coref = 0
-    tag_len_mismatch = 0
-    with open(args.output, "w", encoding="utf-8") as output_file:
-        for (
-            source,
-            target,
-            ellipsis_sent,
-            ellipsis_sent_filt,
-            cur_src_doc,
-            cur_tgt_doc,
-            docid,
-            align,
-        ) in zip(
-            srcs,
-            tgts,
-            ellipsis_sents,
-            ellipsis_sents_filt,
-            src_docs,
-            tgt_docs,
-            docids,
-            alignments,
-        ):
-            if prev_docid is None or docid != prev_docid:
-                prev_docid = docid
-                source_context = []
-                target_context = []
-                # align_context = []
-                cohesion_words = defaultdict(lambda: defaultdict(lambda: 0))
-                prev_formality_tags = set()
-                verb_forms = set()
-                verbs = set()
-                nouns = set()
-                verbs_filt = set()
-                nouns_filt = set()
+    doc_elements: List[Any] = []
+    all_docs: List[List[Any]] = []
 
-            # TODO: this might be used for V2?
-            # current_src_ctx = source_context[
-            #     len(source_context) - args.source_context_size :
-            # ]
-            # current_tgt_ctx = target_context[
-            #     len(target_context) - args.target_context_size :
-            # ]
-            # current_align_ctx = align_context[
-            #     len(align_context)
-            #     - max(args.source_context_size, args.target_context_size) :
-            # ]
+    for docid, *elements in zip(docids, *args):
+        # if first sentence of a new document, reset context
+        if prev_docid is None or docid != prev_docid:
+            if prev_docid is not None:
+                all_docs.append(list(zip(*doc_elements)))
+            doc_elements = []
+            prev_docid = docid
 
-            has_ante = [False for _ in range(len(source.split(" ")))]
-            # TODO: proper exception capturing
+        doc_elements.append(elements)
+    all_docs.append(list(zip(*doc_elements)))
+    return tuple(zip(*all_docs))
+
+
+class Tagger(abc.ABC):
+    """
+    Abstact class that represent a tagger for a (target) language.
+    It implements the core preprocessing and tagging functionality.
+    Subclasses need to override the __init__ to set language-specific parameters and,
+    if applicable, implement the _verb_formality method.
+    """
+
+    def __init__(
+        self,
+        align_model: str = "bert-base-multilingual-cased",
+        align_cachedir: str = "/projects/tir5/users/patrick/awesome",
+    ) -> None:
+        """Initializes the tagger, loading the necessary models."""
+        self.src_pipeline = spacy_stanza.load_pipeline(
+            "en", processors="tokenize,pos,lemma,depparse"
+        )
+
+        # override this in subclasses
+        self.tgt_pipeline: spacy.language.Language
+        self.formality_classes: Dict[str, Set[str]] = {}
+        self.ambiguous_pronouns: Dict[str, List[str]] = {}
+        self.ambiguous_verbform: List[str] = []
+
+        self.align_model = align_model
+        self.align_cachedir = align_cachedir
+
+    def _normalize(self, word: str) -> str:
+        """default normalization"""
+        return re.sub(r"^\W+|\W+$", "", word.lower())
+
+    def preprocess(
+        self, srcs: List[str], tgts: List[str], docids: List[int]
+    ) -> Tuple[List[Document], List[Document], List[Antecs], List[Alignment]]:
+        """
+        Preprocesses a list of source and target sentences, creating a document-level
+        structures necessary for tagging.
+
+        Args:
+            srcs: list of source sentences
+            tgts: list of target sentences
+            docids: list of document ids, mapping each sentence to a document
+        Returns:
+            src_docs: list of source documents, each document is a list of sentences,
+                each sentence is a list of tokens
+            tgt_docs: list of target documents, ...
+            antecs_docs: list of document antecedent markers, where the antecend marker
+                for every sentence in the document is a list of booleans specifying if
+                each token has an antecedent in the current sentence
+            align_docs: list of document alignments, where the alignment for every
+                sentence in the document is a dictionary mapping source token indices
+                to target token indices
+        """
+        src_pproc = list(self.src_pipeline.pipe(srcs))
+        tgt_pproc = list(self.tgt_pipeline.pipe(tgts))
+
+        # build extra information, such as alignments and coref chains
+        alignments = self._build_alignments(src_pproc, tgt_pproc)
+        antecs = self._build_corefs(src_pproc)
+
+        return build_docs(docids, src_pproc, tgt_pproc, antecs, alignments)  # type: ignore
+
+    def tag(
+        self,
+        src_doc: Document,
+        tgt_doc: Document,
+        antecs_doc: Antecs,
+        align_doc: Alignment,
+        phenomena: List[str] = [
+            "lexical_cohesion",
+            "formality",
+            "verb_form",
+            "pronouns",
+        ],
+    ) -> List[List[List[str]]]:
+        """Tags a src-tgt document pair, returning the tags associated with each token
+        in each sentence of the target document.
+
+        Args:
+            src_doc: list of source sentences, each sentence is a list of tokens
+            tgt_doc: list of target sentences, each sentence is a list of tokens
+            antecs_doc: list of coref chains, each chain is a list of booleans
+            align_doc: list of alignments, each alignment is a
+                dictionary mapping source token indices to target token indices
+            phenomena: list of phenomena to tag
+        Returns:
+            list of list of list of tags, with the tags for each token in each sentence
+                in the target document
+        """
+        kwargs = {
+            "src_doc": src_doc,
+            "tgt_doc": tgt_doc,
+            "antecs_doc": antecs_doc,
+            "align_doc": align_doc,
+        }
+        tagged_doc: List[List[List[str]]] = [[[] for _ in tgt] for tgt in tgt_doc]
+        for phenomenon in phenomena:
+            assert hasattr(self, phenomenon), "Phenomenon doesn't exist"
+            phenomenon_fn = getattr(self, phenomenon)
+            # we call it with the arguments it needs
+            tags = phenomenon_fn(
+                **{
+                    k: v
+                    for k, v in kwargs.items()
+                    if k in inspect.signature(phenomenon_fn).parameters
+                }
+            )
+            for i, sent_tags in enumerate(tags):
+                assert len(sent_tags) == len(tagged_doc[i])
+                for j, tag in enumerate(sent_tags):
+                    if tag:
+                        tagged_doc[i][j].append(phenomenon)
+        return tagged_doc
+
+    def _build_corefs(self, src_pproc: List[spacy.tokens.doc.Doc]) -> List[List[bool]]:
+        """Builds coreference chains for the source (english) sentences."""
+        # this is done in order to know which ambiguous pronoun need context to be resolved
+        # TODO: encapsulate this as part of the tagger?
+        en_coref = Predictor.from_path(
+            "https://storage.googleapis.com/allennlp-public-models/coref-spanbert-large-2021.03.10.tar.gz"
+        )
+        antecs = []
+        coref_errors = 0
+        for src in src_pproc:
+            has_antec = [False] * len(src)
             try:
-                coref = en_coref.predict(document=source)
-                if len(source.split(" ")) != len(coref["document"]):
-                    raise Exception()
+                coref = en_coref.predict(document=src.text)
+                if len(src) != len(coref["document"]):
+                    raise ValueError()
 
                 for cluster in coref["clusters"]:
                     for mention in cluster[1:]:
                         for i in range(mention[0], mention[1] + 1):
-                            has_ante[i] = True
-            except BaseException:
-                failed_coref += 1
-                pass
+                            has_antec[i] = True
 
-            lexical_tags, cohesion_words = tagger.lexical_cohesion(
-                target, cur_src_doc, cur_tgt_doc, align, cohesion_words
-            )
-            formality_tags, prev_formality_tags = tagger.formality_tags(
-                source, cur_src_doc, target, cur_tgt_doc, align, prev_formality_tags
-            )
-            verb_tags, verb_forms = tagger.verb_form(cur_tgt_doc, verb_forms)
-            pronouns_tags = tagger.pronouns(cur_src_doc, cur_tgt_doc, align, has_ante)
-            ellipsis_tags, verbs, nouns = tagger.ellipsis(
-                cur_src_doc, cur_tgt_doc, align, verbs, nouns, ellipsis_sent
-            )
-            ellipsis_tags_filt, verbs_filt, nouns_filt = tagger.ellipsis(
-                cur_src_doc,
-                cur_tgt_doc,
-                align,
-                verbs_filt,
-                nouns_filt,
-                ellipsis_sent_filt,
-            )
-            posmorph_tags = tagger.pos_morph(target, cur_tgt_doc)
-            tags = []
+            # sometimes tokenizers are not consistent, or some other error happens in the coreference resolution
+            # in that case we just ignore the coref assuming it has no antencedents (might lead to some false positives)
+            except (IndexError, ValueError):
+                coref_errors += 1
 
-            # TODO: fix this
-            if any(
-                len(p_tags) != len(target.split(" "))
-                for p_tags in (
-                    pronouns_tags,
-                    formality_tags,
-                    ellipsis_tags,
-                    ellipsis_tags_filt,
-                    posmorph_tags,
-                    verb_tags,
-                )
-            ):
-                tags = ["all" for _ in range(len(target.split(" ")))]
-                tag_len_mismatch += 1
+            antecs.append(has_antec)
+        return antecs
+
+    def _build_alignments(
+        self,
+        src_pproc: List[spacy.tokens.doc.Doc],
+        tgt_pproc: List[spacy.tokens.doc.Doc],
+    ) -> List[Dict[int, int]]:
+        """Builds alignments between source and target sentences."""
+        # TODO: refactor this to use HFs rather than subprocess
+        data_inf = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8")
+        for src, tgt in zip(src_pproc, tgt_pproc):
+            src_tks = " ".join([x.text for x in src])
+            tgt_tks = " ".join([x.text for x in tgt])
+            if len(src_tks.strip()) > 0 and len(tgt_tks.strip()) > 0:
+                data_inf.write(f"{src_tks.strip()} ||| {tgt_tks.strip()}\n")
+            elif len(tgt_tks.strip()) > 0:
+                data_inf.write(f"{src_tks.strip()} ||| <blank>\n")
             else:
-                for i in range(len(lexical_tags)):
-                    tag = ["all"]
+                data_inf.write("<blank> ||| <blank>\n")
+        data_inf.flush()
 
-                    if pronouns_tags[i]:
-                        tag.append("pronouns")
-                    if formality_tags[i]:
-                        tag.append("formality")
-                    if verb_tags[i]:
-                        tag.append("verb_tense")
-                    if ellipsis_tags[i]:
-                        tag.append("ellipsis")
-                    if ellipsis_tags_filt[i]:
-                        tag.append("ellipsis_filt")
-                    if lexical_tags[i]:
-                        tag.append("lexical")
-                    if len(tag) == 1:
-                        tag.append("no_tag")
-                    tag.append(posmorph_tags[i])
-                    tags.append("+".join(tag))
+        # we run it using subprocess because it the python library is not very easy to use
+        alignment_outf = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8")
+        subproc = subprocess.Popen(
+            [
+                "awesome-align",
+                "--output_file",
+                alignment_outf.name,
+                "--model_name_or_path",
+                self.align_model,
+                "--data_file",
+                data_inf.name,
+                "--extraction",
+                "softmax",
+                "--batch_size",
+                "32",
+                "--cache_dir",
+                self.align_cachedir,
+            ]
+        )
+        # TODO: check if subproc exited successfully
+        subproc.wait()
 
-            assert len(tags) == len(target.split(" "))
-            print(" ".join(tags), file=output_file)
+        with open(alignment_outf.name, "r", encoding="utf-8") as alignment_readf:
+            # TODO: refactor this to be more readable
+            alignments = []
+            for alignment_str in alignment_readf.readlines():
+                alignment = {}
+                for pair in alignment_str.strip().split(" "):
+                    src_idx, tgt_idx = pair.split("-")
+                    alignment[int(src_idx)] = int(tgt_idx)
+                alignments.append(alignment)
 
-            source_context.append(source)
-            target_context.append(target)
-        print(f"corref_errors: {failed_coref}/{len(srcs)}")
-        print(f"tagmismatch_errors: {tag_len_mismatch}/{len(srcs)}")
+        return alignments
 
+    def formality(
+        self,
+        src_doc: Document,
+        tgt_doc: Document,
+        align_doc: Alignment,
+    ) -> List[List[bool]]:
+        """Checks a (preprocessed) document for formality-related (e.g. pronouns, verb forms, etc.)
+        that require context to be disambiguated.
 
-if __name__ == "__main__":
-    main()
+        Args:
+            src_doc: list of list of spacy tokens
+            tgt_doc: list of list of spacy tokens
+            align_doc: list of alignment dictionaries, mapping source to target tokens
+        Returns:
+            list of list of bools indicating if a given token is formal
+        """
+        doc_tags = []
+        formality_classes = {
+            word: formality
+            for formality, words in self.formality_classes.items()
+            for word in words
+        }
+        formality_words = list(formality_classes.keys())
+        prev_formality = set()
+        for src, tgt, align in zip(src_doc, tgt_doc, align_doc):
+            tags = []
+            for word in tgt:
+                if word.text in formality_words:
+                    # if a formality-related word is found, tag it if has appeared before
+                    if formality_classes[word.text] in prev_formality:
+                        tags.append(True)
+                    # otherwise record that this formality class has appeared
+                    else:
+                        tags.append(False)
+                        prev_formality.add(formality_classes[word.text])
+                else:
+                    tags.append(False)
+
+                # if the subclasses implements a verb formality check, use it
+                try:
+                    verb_tags = self._verb_formality(src, tgt, align, prev_formality)
+                    assert len(tags) == len(verb_tags)
+                    tags = [a or b for a, b in zip(tags, verb_tags)]
+                except NotImplementedError:
+                    pass
+
+            doc_tags.append(tags)
+
+        return doc_tags
+
+    def _verb_formality(
+        self,
+        src_sent: spacy.tokens.doc.Doc,
+        tgt_sent: spacy.tokens.doc.Doc,
+        align_sent: Dict[int, int],
+        prev_formality: Set[str],
+    ) -> List[bool]:
+        """Checks a (preprocessed) sentence for formality-related verbs forms that
+        require context to be disambiguated. Needs to be implemented by subclasses for language-specific ruls
+
+        Args:
+            src_sent: list of spacy tokens
+            tgt_doc: list of spacy tokens
+            align: list of alignment dictionaries, mapping source to target tokens
+        Returns:
+            list of list of bools indicating if a given token is formal
+        """
+        raise NotImplementedError("")
+
+    def verb_form(self, tgt_doc: Document) -> List[List[bool]]:
+        """TODO: add documentation"""
+        doc_tags = []
+        verb_forms = set()
+        for tgt in tgt_doc:
+            tags = []
+            for tok in tgt:
+                tag = False
+                if tok.pos_ == "VERB":
+                    amb_verb_forms = [
+                        a
+                        for a in tok.morph.get("Tense")
+                        if a in self.ambiguous_verbform
+                    ]
+                    for form in set(amb_verb_forms):
+                        if form in verb_forms:
+                            tag = True  # Set tag to true if ambiguous form appeared before
+                        else:
+                            verb_forms.add(form)  # Add ambiguous form to memory
+
+                tags.append(tag)
+
+            doc_tags.append(tags)
+
+        return doc_tags
+
+    def lexical_cohesion(
+        self,
+        src_doc: Document,
+        tgt_doc: Document,
+        align_doc: Alignment,
+        cohesion_threshold: int = 2,
+    ) -> List[List[bool]]:
+        """TODO: add documentation"""
+        doc_tags = []
+        cohesion_words: Dict[str, Dict[str, int]] = defaultdict(
+            lambda: defaultdict(lambda: 0)
+        )
+        for src, tgt, align in zip(src_doc, tgt_doc, align_doc):
+            tags = [False] * len(tgt)
+
+            # get non-stopwords
+            # TODO: check if we still need `tok.text.split(" ")` or why it was added
+            src_lemmas = [
+                t if not tok.is_stop and not tok.is_punct else None
+                for tok in src
+                for t in tok.text.split(" ")
+            ]
+            lemmas_idx, tgt_lemmas = zip(
+                *[
+                    (i, t if not tok.is_stop and not tok.is_punct else None)
+                    for i, tok in enumerate(tgt)
+                    for t in tok.text.split(" ")
+                ]
+            )
+
+            tmp_cohesion_words: Dict[str, Dict[str, int]] = defaultdict(
+                lambda: defaultdict(lambda: 0)
+            )
+            for s, t in align.items():
+                src_lemma = src_lemmas[s]
+                tgt_lemma = tgt_lemmas[t]
+                # for every aligned src-tgt word, check if it has appear more than
+                # `cohesion_threshold` times in previous sentences
+                # and update the temporary cohesion words dictionary
+                if src_lemma is not None and tgt_lemma is not None:
+                    if cohesion_words[src_lemma][tgt_lemma] > cohesion_threshold:
+                        tags[lemmas_idx[t]] = True
+                    tmp_cohesion_words[src_lemma][tgt_lemma] += 1
+
+            # update global cohesion words with the temporary dictionary
+            for src_lemma in tmp_cohesion_words.keys():
+                for tgt_lemma in tmp_cohesion_words[src_lemma].keys():
+                    cohesion_words[src_lemma][tgt_lemma] += tmp_cohesion_words[
+                        src_lemma
+                    ][tgt_lemma]
+
+            doc_tags.append(tags)
+
+        return doc_tags
+
+    def pronouns(
+        self,
+        src_doc: Document,
+        tgt_doc: Document,
+        align_doc: Alignment,
+        antecs_doc: Antecs,
+    ) -> List[List[bool]]:
+        """TODO: add documentation"""
+        doc_tags = []
+        for src, tgt, align, antecs in zip(src_doc, tgt_doc, align_doc, antecs_doc):
+            tags = [False] * len(tgt)
+            if not self.ambiguous_pronouns:
+                doc_tags.append(tags)
+                continue
+
+            src_text, src_pos = zip(
+                *[
+                    (tok.text, tok.pos_) if not tok.is_punct else (None, None)
+                    for tok in src
+                    for _ in tok.text.split(" ")
+                ]
+            )
+            tgt_idx, tgt_text, tgt_pos = zip(
+                *[
+                    (i, *((tok.text, tok.pos_) if not tok.is_punct else (None, None)))
+                    for i, tok in enumerate(tgt)
+                    for _ in tok.text.split(" ")
+                ]
+            )
+
+            for s, r in align.items():
+                if s > len(src_text):
+                    print(f"IndexError{s}: {src_text}")
+                if r > len(tgt_text):
+                    print(f"IndexError{r}: {tgt_text}")
+                if (
+                    not antecs[s]
+                    and src_pos[s] == "PRON"
+                    and tgt_pos[r] == "PRON"
+                    and self._normalize(tgt_text[r])
+                    in self.ambiguous_pronouns.get(self._normalize(src_text[s]), [])
+                ):
+                    tags[tgt_idx[r]] = True
+            doc_tags.append(tags)
+
+        return doc_tags

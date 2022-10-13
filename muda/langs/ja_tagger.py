@@ -1,12 +1,15 @@
-import spacy_stanza
+from typing import Any
+import spacy_stanza  # type: ignore
 
-from . import register_tagger, Tagger
+from muda import Tagger
+
+from . import register_tagger
 
 
 @register_tagger("jp_tagger")
 class JapaneseTagger(Tagger):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
         # Formality verb forms from https://www.aclweb.org/anthology/D19-5203.pdf adapted to stanza tokens
         self.formality_classes = {
             "t_class": {"だ", "だっ", "じゃ", "だろう", "だ", "だけど", "だっ"},
@@ -32,7 +35,7 @@ class JapaneseTagger(Tagger):
         self.ambiguous_pronouns = {
             "i": ["私", "僕", "俺"],
         }
-        # self.tagger = spacy.load("ja_core_news_sm")
-        self.tagger = spacy_stanza.load_pipeline(
+        # self.tgt_pipeline = spacy.load("ja_core_news_sm")
+        self.tgt_pipeline = spacy_stanza.load_pipeline(
             "ja", processors="tokenize,pos,lemma,depparse"
         )
