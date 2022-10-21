@@ -1,13 +1,8 @@
 import unittest
-import spacy_stanza
 import os
-from collections import defaultdict
-import sys
 import tempfile
 import json
-import pdb
 
-from ..langs import TAGGER_REGISTRY, create_tagger
 from muda import main
 
 TEST_DIR = "./example_data/tests"
