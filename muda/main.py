@@ -1,10 +1,11 @@
 import argparse
 import json
+from typing import Dict, Any
 
 from muda.langs import TAGGER_REGISTRY, create_tagger
 
 
-def parse_args() -> dict:
+def parse_args() -> Dict[str, Any]:
     parser = argparse.ArgumentParser()
     # base arguments
     parser.add_argument("--src", required=True, help="File with source sentences")
@@ -47,7 +48,7 @@ def parse_args() -> dict:
     return args_dict
 
 
-def main(args: dict) -> None:
+def main(args: Dict[str, Any]) -> None:
     with open(args["src"], "r", encoding="utf-8") as src_f:
         srcs = [line.strip() for line in src_f]
     with open(args["tgt"], "r", encoding="utf-8") as tgt_f:

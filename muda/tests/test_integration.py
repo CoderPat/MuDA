@@ -1,8 +1,10 @@
 import unittest
 import os
 import tempfile
+from tempfile import _TemporaryFileWrapper  # need this to avoid type error
 import json
 import enum
+from typing import List, IO
 
 from muda import main
 
@@ -20,8 +22,12 @@ class Phenomena(enum.Enum):
 
 
 class TestFr(unittest.TestCase):
+    temp_tags_file: IO
+    tags_data: List[List[List[str]]]
+    expected_tags: List[str]
+
     @classmethod
-    def setUpClass(self):
+    def setUpClass(self) -> None:
         test_dir = os.path.join(TEST_DIR, "fr")
         docids_file = os.path.join(test_dir, "example.docids")
         fr_file = os.path.join(test_dir, "example.fr")
@@ -48,14 +54,16 @@ class TestFr(unittest.TestCase):
         with open(results_file, "r") as results_f:
             self.expected_tags = results_f.read().splitlines()
 
-    def test_all(self):
+    def test_all(self) -> None:
         for i, tags in enumerate(self.tags_data):
             expected_tags = [x for x in self.expected_tags[i].split(" ")]
             for t in expected_tags:
                 for j, tag_val in enumerate(t.split(",")):
                     for t in tag_val.split(","):
-                        t = int(t)
-                        if t == 0:
+                        int_t = int(t)
+                        if int_t == 0:
                             self.assertTrue(len(self.tags_data[i][j]) == 0)
                         else:
-                            self.assertTrue(Phenomena(t).name in self.tags_data[i][j])
+                            self.assertTrue(
+                                Phenomena(int_t).name in self.tags_data[i][j]
+                            )
