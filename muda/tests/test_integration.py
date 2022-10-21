@@ -21,7 +21,7 @@ class Phenomena(enum.Enum):
 
 
 class TestFr(unittest.TestCase):
-    temp_tags_file: IO[str]  # type: ignore
+    temp_tags_file: IO[str]
     tags_data: List[List[List[str]]]
     expected_tags: List[str]
 
@@ -33,7 +33,7 @@ class TestFr(unittest.TestCase):
         en_file = os.path.join(test_dir, "example.en")
         results_file = os.path.join(test_dir, "example.expected")
 
-        self.temp_tags_file = tempfile.NamedTemporaryFile()
+        self.temp_tags_file = tempfile.NamedTemporaryFile()  # type: ignore
 
         main_args = {
             "src": en_file,
