@@ -12,6 +12,7 @@ from muda import main
 
 TEST_DIR = "./example_data/tests"
 
+
 class TestFr(unittest.TestCase):
     @classmethod
     def setUpClass(self):
@@ -31,11 +32,11 @@ class TestFr(unittest.TestCase):
             "dump_tags": os.path.join("/tmp", self.temp_tags_file.name),
             "phenomena": ["lexical_cohesion", "formality", "verb_form", "pronouns"],
             "awesome_align_model": "bert-base-multilingual-cased",
-            "awesome_align_cachedir": "/projects/tir5/users/patrick/awesome"
+            "awesome_align_cachedir": "/projects/tir5/users/patrick/awesome",
         }
 
         main(main_args)
-        
+
         self.tags_data = json.loads(self.temp_tags_file.read())[0]
 
         with open(results_file, "r") as results_f:
@@ -49,5 +50,3 @@ class TestFr(unittest.TestCase):
                     self.assertIn("formality", tag)
                 else:
                     self.assertNotIn("formality", tag)
-
-

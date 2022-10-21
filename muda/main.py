@@ -4,6 +4,7 @@ import pdb
 
 from muda.langs import TAGGER_REGISTRY, create_tagger
 
+
 def parse_args() -> dict:
     parser = argparse.ArgumentParser()
     # base arguments
@@ -45,6 +46,7 @@ def parse_args() -> dict:
 
     args_dict = vars(args)
     return args_dict
+
 
 def main(args: dict) -> None:
     with open(args["src"], "r", encoding="utf-8") as src_f:
