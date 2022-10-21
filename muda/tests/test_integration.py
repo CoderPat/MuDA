@@ -21,7 +21,7 @@ class Phenomena(enum.Enum):
 
 
 class TestFr(unittest.TestCase):
-    temp_tags_file: IO[str]
+    temp_tags_file: IO[str] # type: ignore 
     tags_data: List[List[List[str]]]
     expected_tags: List[str]
 
