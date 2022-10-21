@@ -1,7 +1,6 @@
 import unittest
 import os
 import tempfile
-from tempfile import _TemporaryFileWrapper  # need this to avoid type error
 import json
 import enum
 from typing import List, IO
