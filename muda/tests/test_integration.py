@@ -8,6 +8,7 @@ from muda import main
 
 TEST_DIR = "./example_data/tests"
 
+
 # To create new test cases for different phenomena, add a new entry to this enum
 # The "expected" file should be a space-separated list of tag values for each token, with "0" meaning "no tag"
 # If there are multiple expected phenomena in a token, the values should be separated by a comma (no space)
