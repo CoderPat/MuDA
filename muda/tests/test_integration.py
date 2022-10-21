@@ -2,20 +2,30 @@ import unittest
 import os
 import tempfile
 import json
+import enum
 
 from muda import main
 
 TEST_DIR = "./example_data/tests"
 
+# To create new test cases for different phenomena, add a new entry to this enum
+# The "expected" file should be a space-separated list of tag values for each token, with "0" meaning "no tag"
+# If there are multiple expected phenomena in a token, the values should be separated by a comma (no space)
+class Phenomena(enum.Enum):
+    lexical_cohesion = 1
+    formality = 2
+    verb_form = 3
+    pronouns = 4
+
 
 class TestFr(unittest.TestCase):
     @classmethod
     def setUpClass(self):
-        formality_dir = os.path.join(TEST_DIR, "fr", "formality")
-        docids_file = os.path.join(formality_dir, "example.docids")
-        fr_file = os.path.join(formality_dir, "example.fr")
-        en_file = os.path.join(formality_dir, "example.en")
-        results_file = os.path.join(formality_dir, "example.expected")
+        test_dir = os.path.join(TEST_DIR, "fr")
+        docids_file = os.path.join(test_dir, "example.docids")
+        fr_file = os.path.join(test_dir, "example.fr")
+        en_file = os.path.join(test_dir, "example.en")
+        results_file = os.path.join(test_dir, "example.expected")
 
         self.temp_tags_file = tempfile.NamedTemporaryFile()
 
@@ -37,11 +47,14 @@ class TestFr(unittest.TestCase):
         with open(results_file, "r") as results_f:
             self.expected_tags = results_f.read().splitlines()
 
-    def test_formality(self):
+    def test_all(self):
         for i, tags in enumerate(self.tags_data):
-            expected_tags = [int(x) for x in self.expected_tags[i].split()]
-            for j, tag in enumerate(tags):
-                if expected_tags[j] == 1:
-                    self.assertIn("formality", tag)
-                else:
-                    self.assertNotIn("formality", tag)
+            expected_tags = [x for x in self.expected_tags[i].split(" ")]
+            for t in expected_tags:
+                for j, tag_val in enumerate(t.split(",")):
+                    for t in tag_val.split(","):
+                        t = int(t)
+                        if t == 0:
+                            self.assertTrue(len(self.tags_data[i][j]) == 0)
+                        else:
+                            self.assertTrue(Phenomena(t).name in self.tags_data[i][j])

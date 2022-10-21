@@ -1,6 +1,5 @@
 import argparse
 import json
-import pdb
 
 from muda.langs import TAGGER_REGISTRY, create_tagger
 
