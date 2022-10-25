@@ -258,17 +258,19 @@ class Tagger(abc.ABC):
         }
         formality_words = list(formality_classes.keys())
         prev_formality = set()
+        #import pdb; pdb.set_trace()
         for src, tgt, align in zip(src_doc, tgt_doc, align_doc):
             tags = []
             for word in tgt:
-                if word.text in formality_words:
+                norm_word = self._normalize(word.text)
+                if norm_word in formality_words:
                     # if a formality-related word is found, tag it if has appeared before
-                    if formality_classes[word.text] in prev_formality:
+                    if formality_classes[norm_word] in prev_formality:
                         tags.append(True)
                     # otherwise record that this formality class has appeared
                     else:
                         tags.append(False)
-                        prev_formality.add(formality_classes[word.text])
+                        prev_formality.add(formality_classes[norm_word])
                 else:
                     tags.append(False)
 
