@@ -4,6 +4,7 @@ import tempfile
 import json
 import enum
 from typing import List, IO
+from itertools import chain
 
 from muda import main
 
@@ -48,7 +49,9 @@ class TestFr(unittest.TestCase):
 
         main(main_args)
 
-        self.tags_data = json.loads(self.temp_tags_file.read())[0]
+        self.tags_data = list(
+            chain.from_iterable(json.loads(self.temp_tags_file.read()))
+        )
 
         with open(results_file, "r") as results_f:
             self.expected_tags = results_f.read().splitlines()
@@ -56,13 +59,10 @@ class TestFr(unittest.TestCase):
     def test_all(self) -> None:
         for i, tags in enumerate(self.tags_data):
             expected_tags = [x for x in self.expected_tags[i].split(" ")]
-            for t in expected_tags:
-                for j, tag_val in enumerate(t.split(",")):
-                    for t in tag_val.split(","):
-                        int_t = int(t)
-                        if int_t == 0:
-                            self.assertTrue(len(self.tags_data[i][j]) == 0)
-                        else:
-                            self.assertTrue(
-                                Phenomena(int_t).name in self.tags_data[i][j]
-                            )
+            for j, token_tags in enumerate(expected_tags):
+                for tag_val in token_tags.split(","):
+                    tag_int = int(tag_val)
+                    if tag_int == 0:
+                        self.assertTrue(len(self.tags_data[i][j]) == 0)
+                    else:
+                        self.assertTrue(Phenomena(tag_int).name in self.tags_data[i][j])
