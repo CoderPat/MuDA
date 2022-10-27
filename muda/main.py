@@ -38,7 +38,7 @@ def parse_args() -> Dict[str, Any]:
     )
     parser.add_argument(
         "--awesome-align-cachedir",
-        default="/projects/tir5/users/patrick/awesome",
+        default=None,
         help="Cache directory to save awesome-align models",
     )
 

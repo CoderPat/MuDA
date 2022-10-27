@@ -4,7 +4,7 @@ import re
 import subprocess
 import tempfile
 from collections import defaultdict
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Set, Tuple, Optional
 
 import spacy
 import spacy_stanza  # type: ignore
@@ -49,7 +49,7 @@ class Tagger(abc.ABC):
     def __init__(
         self,
         align_model: str = "bert-base-multilingual-cased",
-        align_cachedir: str = "/projects/tir5/users/patrick/awesome",
+        align_cachedir: Optional[str] = None,
     ) -> None:
         """Initializes the tagger, loading the necessary models."""
         self.src_pipeline = spacy_stanza.load_pipeline(
@@ -212,6 +212,11 @@ class Tagger(abc.ABC):
 
         # we run it using subprocess because it the python library is not very easy to use
         alignment_outf = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8")
+
+        extra_args = []
+        if self.align_cachedir is not None:
+            extra_args.extend(["--cache_dir", self.align_cachedir])
+
         subproc = subprocess.Popen(
             [
                 "awesome-align",
@@ -225,8 +230,7 @@ class Tagger(abc.ABC):
                 "softmax",
                 "--batch_size",
                 "32",
-                "--cache_dir",
-                self.align_cachedir,
+                *extra_args,
             ]
         )
         # TODO: check if subproc exited successfully
