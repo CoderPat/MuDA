@@ -5,8 +5,10 @@ import json
 import enum
 from typing import List, IO
 from itertools import chain
+from parameterized import parameterized
 
 from muda import main
+import pdb
 
 TEST_DIR = "./example_data/tests"
 
@@ -20,17 +22,15 @@ class Phenomena(enum.Enum):
     verb_form = 3
     pronouns = 4
 
+class BaseTestCase:
+    def __init__(self, langcode):
+        super().__init__()
+        self.langcode = langcode
 
-class TestFr(unittest.TestCase):
-    temp_tags_file: IO[str]
-    tags_data: List[List[List[str]]]
-    expected_tags: List[str]
-
-    @classmethod
-    def setUpClass(self) -> None:
-        test_dir = os.path.join(TEST_DIR, "fr")
+    def runMuda(self) -> None:
+        test_dir = os.path.join(TEST_DIR, self.langcode)
         docids_file = os.path.join(test_dir, "example.docids")
-        fr_file = os.path.join(test_dir, "example.fr")
+        fr_file = os.path.join(test_dir, f"example.{self.langcode}")
         en_file = os.path.join(test_dir, "example.en")
         results_file = os.path.join(test_dir, "example.expected")
 
@@ -40,7 +40,7 @@ class TestFr(unittest.TestCase):
             "src": en_file,
             "tgt": fr_file,
             "docids": docids_file,
-            "tgt_lang": "fr",
+            "tgt_lang": self.langcode,
             "dump_tags": os.path.join("/tmp", self.temp_tags_file.name),
             "phenomena": ["lexical_cohesion", "formality", "verb_form", "pronouns"],
             "awesome_align_model": "bert-base-multilingual-cased",
@@ -56,13 +56,38 @@ class TestFr(unittest.TestCase):
         with open(results_file, "r") as results_f:
             self.expected_tags = results_f.read().splitlines()
 
+        return self.tags_data, self.expected_tags
+
     def test_all(self) -> None:
+        token_results = []
+
+        if self.tags_data is None or self.expected_tags is None:
+            self.runMuda()
+
         for i, tags in enumerate(self.tags_data):
             expected_tags = [x for x in self.expected_tags[i].split(" ")]
             for j, token_tags in enumerate(expected_tags):
                 for tag_val in token_tags.split(","):
                     tag_int = int(tag_val)
                     if tag_int == 0:
-                        self.assertTrue(len(self.tags_data[i][j]) == 0)
+                        token_results.append(len(self.tags_data[i][j]) == 0)
                     else:
-                        self.assertTrue(Phenomena(tag_int).name in self.tags_data[i][j])
+                        token_results.append(Phenomena(tag_int).name in self.tags_data[i][j])
+        
+        return token_results
+
+class TestLanguages(unittest.TestCase):
+    @parameterized.expand([
+        ["Spanish", "es"],
+        ["French", "fr"],
+        #["Japanese", "ja"],
+        #["Portuguese", "pt"],
+        #["Turkish", "tr"],
+        #["Chinese", "zh"],
+    ])
+    def test_all(self, name, langcode):
+        test_case = BaseTestCase(langcode)
+        muda_tags, expected_tags = test_case.runMuda()
+        token_results = test_case.test_all()
+        error_indices = ",".join([i for i, x in enumerate(token_results) if not x])
+        self.assertTrue(all(token_results), f"[{name}] errors at tokens {error_indices}")
