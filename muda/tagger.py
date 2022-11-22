@@ -200,15 +200,17 @@ class Tagger(abc.ABC):
         """Builds alignments between source and target sentences."""
         # TODO: refactor this to use HFs rather than subprocess
         data_inf = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8")
-        for src, tgt in zip(src_pproc, tgt_pproc):
+        for i, (src, tgt) in enumerate(zip(src_pproc, tgt_pproc)):
+            if i:
+                data_inf.write("\n")
             src_tks = " ".join([x.text for x in src])
             tgt_tks = " ".join([x.text for x in tgt])
             if len(src_tks.strip()) > 0 and len(tgt_tks.strip()) > 0:
-                data_inf.write(f"{src_tks.strip()} ||| {tgt_tks.strip()}\n")
+                data_inf.write(f"{src_tks.strip()} ||| {tgt_tks.strip()}")
             elif len(tgt_tks.strip()) > 0:
-                data_inf.write(f"{src_tks.strip()} ||| <blank>\n")
+                data_inf.write(f"{src_tks.strip()} ||| <blank>")
             else:
-                data_inf.write("<blank> ||| <blank>\n")
+                data_inf.write("<blank> ||| <blank>")
         data_inf.flush()
 
         # we run it using subprocess because it the python library is not very easy to use
@@ -218,8 +220,7 @@ class Tagger(abc.ABC):
         if self.align_cachedir is not None:
             extra_args.extend(["--cache_dir", self.align_cachedir])
 
-        subproc = subprocess.Popen(
-            [
+        command = [
                 "awesome-align",
                 "--output_file",
                 alignment_outf.name,
@@ -233,7 +234,10 @@ class Tagger(abc.ABC):
                 "32",
                 *extra_args,
             ]
+        subproc = subprocess.Popen(
+            command,
         )
+        
         # TODO: check if subproc exited successfully
         subproc.wait()
 
@@ -247,6 +251,14 @@ class Tagger(abc.ABC):
                     alignment[int(src_idx)] = int(tgt_idx)
                 alignments.append(alignment)
 
+        # For some reason, sometimes awesome-align outputs an extra alignment,
+        # which is a copy of the last one. In this case, we remove it.
+        if len(alignments) != len(src_pproc):
+            if len(alignments) == len(src_pproc) + 1:
+                alignments = alignments[:-1]
+            else:
+                raise ValueError("Alignment length mismatch")
+            
         return alignments
 
     def formality(

@@ -89,5 +89,5 @@ class TestLanguages(unittest.TestCase):
         test_case = BaseTestCase(langcode)
         muda_tags, expected_tags = test_case.runMuda()
         token_results = test_case.test_all()
-        error_indices = ",".join([i for i, x in enumerate(token_results) if not x])
+        error_indices = ",".join([str(i) for i, x in enumerate(token_results) if not x])
         self.assertTrue(all(token_results), f"[{name}] errors at tokens {error_indices}")
