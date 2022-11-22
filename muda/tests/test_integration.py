@@ -56,8 +56,6 @@ class BaseTestCase:
         with open(results_file, "r") as results_f:
             self.expected_tags = results_f.read().splitlines()
 
-        return self.tags_data, self.expected_tags
-
     def test_all(self) -> None:
         token_results = []
 
@@ -78,8 +76,8 @@ class BaseTestCase:
 
 class TestLanguages(unittest.TestCase):
     @parameterized.expand([
-        ["Spanish", "es"],
         ["French", "fr"],
+        ["Spanish", "es"],
         #["Japanese", "ja"],
         #["Portuguese", "pt"],
         #["Turkish", "tr"],
@@ -87,7 +85,7 @@ class TestLanguages(unittest.TestCase):
     ])
     def test_all(self, name, langcode):
         test_case = BaseTestCase(langcode)
-        muda_tags, expected_tags = test_case.runMuda()
+        test_case.runMuda()
         token_results = test_case.test_all()
         error_indices = ",".join([i for i, x in enumerate(token_results) if not x])
         self.assertTrue(all(token_results), f"[{name}] errors at tokens {error_indices}")
