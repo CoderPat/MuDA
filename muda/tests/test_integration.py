@@ -35,7 +35,7 @@ class BaseTestCase:
         en_file = os.path.join(test_dir, "example.en")
         results_file = os.path.join(test_dir, "example.expected")
 
-        self.temp_tags_file = tempfile.NamedTemporaryFile() 
+        self.temp_tags_file = tempfile.NamedTemporaryFile()
 
         main_args = {
             "src": en_file,
@@ -79,7 +79,7 @@ class BaseTestCase:
 
 
 class TestLanguages(unittest.TestCase):
-    @parameterized.expand( # type: ignore
+    @parameterized.expand(  # type: ignore
         [
             ["Spanish", "es"],
             ["French", "fr"],
