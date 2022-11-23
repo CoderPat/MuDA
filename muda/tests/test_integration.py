@@ -4,7 +4,7 @@ import tempfile
 import json
 import enum
 from itertools import chain
-from parameterized import parameterized # type: ignore
+from parameterized import parameterized  # type: ignore
 from typing import List
 
 from muda import main
@@ -79,7 +79,7 @@ class BaseTestCase:
 
 
 class TestLanguages(unittest.TestCase):
-    @parameterized.expand( 
+    @parameterized.expand(
         [
             ["Spanish", "es"],
             ["French", "fr"],
