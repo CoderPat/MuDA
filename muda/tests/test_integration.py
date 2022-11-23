@@ -4,7 +4,8 @@ import tempfile
 import json
 import enum
 from itertools import chain
-from parameterized import parameterized
+from parameterized import parameterized # type: ignore
+from typing import List
 
 from muda import main
 
@@ -56,7 +57,7 @@ class BaseTestCase:
         with open(results_file, "r") as results_f:
             self.expected_tags = results_f.read().splitlines()
 
-    def test_all(self) -> None:
+    def test_all(self) -> List:
         token_results = []
 
         if self.tags_data is None or self.expected_tags is None:
@@ -78,7 +79,7 @@ class BaseTestCase:
 
 
 class TestLanguages(unittest.TestCase):
-    @parameterized.expand(
+    @parameterized.expand( 
         [
             ["Spanish", "es"],
             ["French", "fr"],
@@ -88,7 +89,7 @@ class TestLanguages(unittest.TestCase):
             ["Chinese", "zh"],
         ]
     )
-    def test_all(self, name, langcode):
+    def test_all(self, name, langcode) -> None:
         test_case = BaseTestCase(langcode)
         test_case.runMuda()
         token_results = test_case.test_all()
