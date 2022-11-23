@@ -3,12 +3,10 @@ import os
 import tempfile
 import json
 import enum
-from typing import List, IO
 from itertools import chain
 from parameterized import parameterized
 
 from muda import main
-import pdb
 
 TEST_DIR = "./example_data/tests"
 
@@ -21,6 +19,8 @@ class Phenomena(enum.Enum):
     formality = 2
     verb_form = 3
     pronouns = 4
+    ellipsis = 5
+
 
 class BaseTestCase:
     def __init__(self, langcode):
@@ -70,22 +70,29 @@ class BaseTestCase:
                     if tag_int == 0:
                         token_results.append(len(self.tags_data[i][j]) == 0)
                     else:
-                        token_results.append(Phenomena(tag_int).name in self.tags_data[i][j])
-        
+                        token_results.append(
+                            Phenomena(tag_int).name in self.tags_data[i][j]
+                        )
+
         return token_results
 
+
 class TestLanguages(unittest.TestCase):
-    @parameterized.expand([
-        ["French", "fr"],
-        ["Spanish", "es"],
-        #["Japanese", "ja"],
-        #["Portuguese", "pt"],
-        #["Turkish", "tr"],
-        #["Chinese", "zh"],
-    ])
+    @parameterized.expand(
+        [
+            ["Spanish", "es"],
+            ["French", "fr"],
+            ["Japanese", "jp"],
+            ["Portuguese", "pt"],
+            # ["Turkish", "tr"], # not testing ellipsis right now
+            ["Chinese", "zh"],
+        ]
+    )
     def test_all(self, name, langcode):
         test_case = BaseTestCase(langcode)
         test_case.runMuda()
         token_results = test_case.test_all()
         error_indices = ",".join([str(i) for i, x in enumerate(token_results) if not x])
-        self.assertTrue(all(token_results), f"[{name}] errors at tokens {error_indices}")
+        self.assertTrue(
+            all(token_results), f"[{name}] errors at tokens {error_indices}"
+        )

@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Set, Tuple, Optional
 import spacy
 import spacy_stanza  # type: ignore
 from allennlp.predictors.predictor import Predictor
-import pdb
 
 Document = List[spacy.tokens.doc.Doc]
 Alignment = List[Dict[int, int]]
@@ -221,23 +220,23 @@ class Tagger(abc.ABC):
             extra_args.extend(["--cache_dir", self.align_cachedir])
 
         command = [
-                "awesome-align",
-                "--output_file",
-                alignment_outf.name,
-                "--model_name_or_path",
-                self.align_model,
-                "--data_file",
-                data_inf.name,
-                "--extraction",
-                "softmax",
-                "--batch_size",
-                "32",
-                *extra_args,
-            ]
+            "awesome-align",
+            "--output_file",
+            alignment_outf.name,
+            "--model_name_or_path",
+            self.align_model,
+            "--data_file",
+            data_inf.name,
+            "--extraction",
+            "softmax",
+            "--batch_size",
+            "32",
+            *extra_args,
+        ]
         subproc = subprocess.Popen(
             command,
         )
-        
+
         # TODO: check if subproc exited successfully
         subproc.wait()
 
@@ -258,7 +257,7 @@ class Tagger(abc.ABC):
                 alignments = alignments[:-1]
             else:
                 raise ValueError("Alignment length mismatch")
-            
+
         return alignments
 
     def formality(
