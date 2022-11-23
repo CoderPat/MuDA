@@ -172,7 +172,7 @@ class Tagger(abc.ABC):
             else:
                 has_antec = [False] * len(src)
                 try:
-                    coref = en_coref.predict(document=src.text)  # type: ignore
+                    coref = en_coref.predict(document=src.text) 
                     if len(src) != len(coref["document"]):
                         raise ValueError()
 

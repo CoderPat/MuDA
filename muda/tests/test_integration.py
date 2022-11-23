@@ -24,7 +24,7 @@ class Phenomena(enum.Enum):
 
 
 class BaseTestCase:
-    def __init__(self, langcode):
+    def __init__(self, langcode: str):
         super().__init__()
         self.langcode = langcode
 
@@ -35,7 +35,7 @@ class BaseTestCase:
         en_file = os.path.join(test_dir, "example.en")
         results_file = os.path.join(test_dir, "example.expected")
 
-        self.temp_tags_file = tempfile.NamedTemporaryFile()  # type: ignore
+        self.temp_tags_file = tempfile.NamedTemporaryFile() 
 
         main_args = {
             "src": en_file,
@@ -57,7 +57,7 @@ class BaseTestCase:
         with open(results_file, "r") as results_f:
             self.expected_tags = results_f.read().splitlines()
 
-    def test_all(self) -> List:
+    def test_all(self) -> List[bool]:
         token_results = []
 
         if self.tags_data is None or self.expected_tags is None:
@@ -79,7 +79,7 @@ class BaseTestCase:
 
 
 class TestLanguages(unittest.TestCase):
-    @parameterized.expand(
+    @parameterized.expand( # type: ignore
         [
             ["Spanish", "es"],
             ["French", "fr"],
@@ -89,7 +89,7 @@ class TestLanguages(unittest.TestCase):
             ["Chinese", "zh"],
         ]
     )
-    def test_all(self, name, langcode) -> None:
+    def test_all(self, name: str, langcode: str) -> None:
         test_case = BaseTestCase(langcode)
         test_case.runMuda()
         token_results = test_case.test_all()
