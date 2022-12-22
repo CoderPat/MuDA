@@ -67,7 +67,7 @@ def main(args: Dict[str, Any]) -> None:
         docids = [int(idx) for idx in docids_f]
 
     if (
-        args["awesome_align_cachedir"] is None
+        args.get("awesome_align_cachedir") is None
         and os.environ.get("AWESOME_CACHEDIR") is not None
     ):
         args["awesome_align_cachedir"] = os.environ.get("AWESOME_CACHEDIR")
@@ -75,7 +75,7 @@ def main(args: Dict[str, Any]) -> None:
     tagger = create_tagger(
         args["tgt_lang"],
         align_model=args["awesome_align_model"],
-        align_cachedir=args["awesome_align_cachedir"],
+        align_cachedir=args.get("awesome_align_cachedir"),
         cohesion_threshold=args["cohesion_threshold"],
     )
 
