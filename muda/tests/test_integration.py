@@ -45,7 +45,6 @@ class BaseTestCase:
             "dump_tags": os.path.join("/tmp", self.temp_tags_file.name),
             "phenomena": ["lexical_cohesion", "formality", "verb_form", "pronouns"],
             "awesome_align_model": "bert-base-multilingual-cased",
-            "awesome_align_cachedir": "/projects/tir5/users/patrick/awesome",
             "cohesion_threshold": 2,
         }
 

@@ -2,6 +2,8 @@ import argparse
 import json
 from typing import Dict, Any
 
+import os
+
 from muda.langs import TAGGER_REGISTRY, create_tagger
 
 
@@ -63,6 +65,12 @@ def main(args: Dict[str, Any]) -> None:
         tgts = [line.strip() for line in tgt_f]
     with open(args["docids"], "r", encoding="utf-8") as docids_f:
         docids = [int(idx) for idx in docids_f]
+
+    if (
+        args["awesome_align_cachedir"] is None
+        and os.environ.get("AWESOME_CACHEDIR") is not None
+    ):
+        args["awesome_align_cachedir"] = os.environ.get("AWESOME_CACHEDIR")
 
     tagger = create_tagger(
         args["tgt_lang"],
