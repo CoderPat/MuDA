@@ -42,6 +42,13 @@ def parse_args() -> Dict[str, Any]:
         help="Cache directory to save awesome-align models",
     )
 
+    parser.add_argument(
+        "--cohesion-threshold", 
+        default=3, type=int,
+        help="Threshold for number of (previous) occurances to be considered lexical cohesion."
+             "Default: 3"
+    )
+
     args = parser.parse_args()
 
     args_dict = vars(args)
@@ -60,6 +67,7 @@ def main(args: Dict[str, Any]) -> None:
         args["tgt_lang"],
         align_model=args["awesome_align_model"],
         align_cachedir=args["awesome_align_cachedir"],
+        cohesion_threshold=args["cohesion_threshold"],
     )
 
     preproc = tagger.preprocess(srcs, tgts, docids)

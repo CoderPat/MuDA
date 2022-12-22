@@ -50,6 +50,7 @@ class Tagger(abc.ABC):
         self,
         align_model: str = "bert-base-multilingual-cased",
         align_cachedir: Optional[str] = None,
+        cohesion_threshold: int = 3,
     ) -> None:
         """Initializes the tagger, loading the necessary models."""
         self.src_pipeline = spacy_stanza.load_pipeline(
@@ -64,6 +65,8 @@ class Tagger(abc.ABC):
 
         self.align_model = align_model
         self.align_cachedir = align_cachedir
+
+        self.cohesion_threshold = cohesion_threshold
 
     def _normalize(self, word: str) -> str:
         """default normalization"""
@@ -284,7 +287,6 @@ class Tagger(abc.ABC):
         }
         formality_words = list(formality_classes.keys())
         prev_formality = set()
-        # import pdb; pdb.set_trace()
         for src, tgt, align in zip(src_doc, tgt_doc, align_doc):
             tags = []
             for word in tgt:
@@ -362,7 +364,6 @@ class Tagger(abc.ABC):
         src_doc: Document,
         tgt_doc: Document,
         align_doc: Alignment,
-        cohesion_threshold: int = 2,
     ) -> List[List[bool]]:
         """TODO: add documentation"""
         doc_tags = []
@@ -371,7 +372,6 @@ class Tagger(abc.ABC):
         )
         for src, tgt, align in zip(src_doc, tgt_doc, align_doc):
             tags = [False] * len(tgt)
-
             # get non-stopwords
             # TODO: check if we still need `tok.text.split(" ")` or why it was added
             src_lemmas = [
@@ -397,7 +397,7 @@ class Tagger(abc.ABC):
                 # `cohesion_threshold` times in previous sentences
                 # and update the temporary cohesion words dictionary
                 if src_lemma is not None and tgt_lemma is not None:
-                    if cohesion_words[src_lemma][tgt_lemma] > cohesion_threshold:
+                    if cohesion_words[src_lemma][tgt_lemma] >= self.cohesion_threshold:
                         tags[lemmas_idx[t]] = True
                     tmp_cohesion_words[src_lemma][tgt_lemma] += 1
 
