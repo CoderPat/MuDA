@@ -43,10 +43,11 @@ def parse_args() -> Dict[str, Any]:
     )
 
     parser.add_argument(
-        "--cohesion-threshold", 
-        default=3, type=int,
+        "--cohesion-threshold",
+        default=3,
+        type=int,
         help="Threshold for number of (previous) occurances to be considered lexical cohesion."
-             "Default: 3"
+        "Default: 3",
     )
 
     args = parser.parse_args()
