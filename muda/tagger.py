@@ -4,7 +4,7 @@ import re
 import subprocess
 import tempfile
 from collections import defaultdict
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Set, Tuple, Optional
 
 import spacy
 import spacy_stanza  # type: ignore
@@ -49,7 +49,8 @@ class Tagger(abc.ABC):
     def __init__(
         self,
         align_model: str = "bert-base-multilingual-cased",
-        align_cachedir: str = "/projects/tir5/users/patrick/awesome",
+        align_cachedir: Optional[str] = None,
+        cohesion_threshold: int = 3,
     ) -> None:
         """Initializes the tagger, loading the necessary models."""
         self.src_pipeline = spacy_stanza.load_pipeline(
@@ -64,6 +65,8 @@ class Tagger(abc.ABC):
 
         self.align_model = align_model
         self.align_cachedir = align_cachedir
+
+        self.cohesion_threshold = cohesion_threshold
 
     def _normalize(self, word: str) -> str:
         """default normalization"""
@@ -96,7 +99,7 @@ class Tagger(abc.ABC):
 
         # build extra information, such as alignments and coref chains
         alignments = self._build_alignments(src_pproc, tgt_pproc)
-        antecs = self._build_corefs(src_pproc)
+        antecs = self._build_corefs(src_pproc, docids)
 
         return build_docs(docids, src_pproc, tgt_pproc, antecs, alignments)  # type: ignore
 
@@ -152,7 +155,9 @@ class Tagger(abc.ABC):
                         tagged_doc[i][j].append(phenomenon)
         return tagged_doc
 
-    def _build_corefs(self, src_pproc: List[spacy.tokens.doc.Doc]) -> List[List[bool]]:
+    def _build_corefs(
+        self, src_pproc: List[spacy.tokens.doc.Doc], docids: List[int]
+    ) -> List[List[bool]]:
         """Builds coreference chains for the source (english) sentences."""
         # this is done in order to know which ambiguous pronoun need context to be resolved
         # TODO: encapsulate this as part of the tagger?
@@ -161,24 +166,32 @@ class Tagger(abc.ABC):
         )
         antecs = []
         coref_errors = 0
-        for src in src_pproc:
-            has_antec = [False] * len(src)
-            try:
-                coref = en_coref.predict(document=src.text)
-                if len(src) != len(coref["document"]):
-                    raise ValueError()
+        prev_docid = None
+        for src, docid in zip(src_pproc, docids):
+            # we check if this is the first sentence of a new document
+            # since in this case there is no context that could help
+            if docid != prev_docid:
+                has_antec = [True] * len(src)
+            else:
+                has_antec = [False] * len(src)
+                try:
+                    coref = en_coref.predict(document=src.text)
+                    if len(src) != len(coref["document"]):
+                        raise ValueError()
 
-                for cluster in coref["clusters"]:
-                    for mention in cluster[1:]:
-                        for i in range(mention[0], mention[1] + 1):
-                            has_antec[i] = True
+                    for cluster in coref["clusters"]:
+                        for mention in cluster[1:]:
+                            for i in range(mention[0], mention[1] + 1):
+                                has_antec[i] = True
 
-            # sometimes tokenizers are not consistent, or some other error happens in the coreference resolution
-            # in that case we just ignore the coref assuming it has no antencedents (might lead to some false positives)
-            except (IndexError, ValueError):
-                coref_errors += 1
+                # sometimes tokenizers are not consistent, or some other error happens in the coreference resolution
+                # in that case we just ignore the coref assuming it has no antencedents (might lead to some false positives)
+                except (IndexError, ValueError):
+                    coref_errors += 1
+                    print("coref error")
 
             antecs.append(has_antec)
+            prev_docid = docid
         return antecs
 
     def _build_alignments(
@@ -189,36 +202,44 @@ class Tagger(abc.ABC):
         """Builds alignments between source and target sentences."""
         # TODO: refactor this to use HFs rather than subprocess
         data_inf = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8")
-        for src, tgt in zip(src_pproc, tgt_pproc):
+        for i, (src, tgt) in enumerate(zip(src_pproc, tgt_pproc)):
+            if i:
+                data_inf.write("\n")
             src_tks = " ".join([x.text for x in src])
             tgt_tks = " ".join([x.text for x in tgt])
             if len(src_tks.strip()) > 0 and len(tgt_tks.strip()) > 0:
-                data_inf.write(f"{src_tks.strip()} ||| {tgt_tks.strip()}\n")
+                data_inf.write(f"{src_tks.strip()} ||| {tgt_tks.strip()}")
             elif len(tgt_tks.strip()) > 0:
-                data_inf.write(f"{src_tks.strip()} ||| <blank>\n")
+                data_inf.write(f"{src_tks.strip()} ||| <blank>")
             else:
-                data_inf.write("<blank> ||| <blank>\n")
+                data_inf.write("<blank> ||| <blank>")
         data_inf.flush()
 
         # we run it using subprocess because it the python library is not very easy to use
         alignment_outf = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8")
+
+        extra_args = []
+        if self.align_cachedir is not None:
+            extra_args.extend(["--cache_dir", self.align_cachedir])
+
+        command = [
+            "awesome-align",
+            "--output_file",
+            alignment_outf.name,
+            "--model_name_or_path",
+            self.align_model,
+            "--data_file",
+            data_inf.name,
+            "--extraction",
+            "softmax",
+            "--batch_size",
+            "32",
+            *extra_args,
+        ]
         subproc = subprocess.Popen(
-            [
-                "awesome-align",
-                "--output_file",
-                alignment_outf.name,
-                "--model_name_or_path",
-                self.align_model,
-                "--data_file",
-                data_inf.name,
-                "--extraction",
-                "softmax",
-                "--batch_size",
-                "32",
-                "--cache_dir",
-                self.align_cachedir,
-            ]
+            command,
         )
+
         # TODO: check if subproc exited successfully
         subproc.wait()
 
@@ -231,6 +252,14 @@ class Tagger(abc.ABC):
                     src_idx, tgt_idx = pair.split("-")
                     alignment[int(src_idx)] = int(tgt_idx)
                 alignments.append(alignment)
+
+        # For some reason, sometimes awesome-align outputs an extra alignment,
+        # which is a copy of the last one. In this case, we remove it.
+        if len(alignments) != len(src_pproc):
+            if len(alignments) == len(src_pproc) + 1:
+                alignments = alignments[:-1]
+            else:
+                raise ValueError("Alignment length mismatch")
 
         return alignments
 
@@ -261,14 +290,15 @@ class Tagger(abc.ABC):
         for src, tgt, align in zip(src_doc, tgt_doc, align_doc):
             tags = []
             for word in tgt:
-                if word.text in formality_words:
+                norm_word = self._normalize(word.text)
+                if norm_word in formality_words:
                     # if a formality-related word is found, tag it if has appeared before
-                    if formality_classes[word.text] in prev_formality:
+                    if formality_classes[norm_word] in prev_formality:
                         tags.append(True)
                     # otherwise record that this formality class has appeared
                     else:
                         tags.append(False)
-                        prev_formality.add(formality_classes[word.text])
+                        prev_formality.add(formality_classes[norm_word])
                 else:
                     tags.append(False)
 
@@ -334,7 +364,6 @@ class Tagger(abc.ABC):
         src_doc: Document,
         tgt_doc: Document,
         align_doc: Alignment,
-        cohesion_threshold: int = 2,
     ) -> List[List[bool]]:
         """TODO: add documentation"""
         doc_tags = []
@@ -343,7 +372,6 @@ class Tagger(abc.ABC):
         )
         for src, tgt, align in zip(src_doc, tgt_doc, align_doc):
             tags = [False] * len(tgt)
-
             # get non-stopwords
             # TODO: check if we still need `tok.text.split(" ")` or why it was added
             src_lemmas = [
@@ -369,7 +397,7 @@ class Tagger(abc.ABC):
                 # `cohesion_threshold` times in previous sentences
                 # and update the temporary cohesion words dictionary
                 if src_lemma is not None and tgt_lemma is not None:
-                    if cohesion_words[src_lemma][tgt_lemma] > cohesion_threshold:
+                    if cohesion_words[src_lemma][tgt_lemma] >= self.cohesion_threshold:
                         tags[lemmas_idx[t]] = True
                     tmp_cohesion_words[src_lemma][tgt_lemma] += 1
 

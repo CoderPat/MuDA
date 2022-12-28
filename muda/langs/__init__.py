@@ -43,4 +43,4 @@ def create_tagger(langcode: str, **kwargs: Any) -> Tagger:
 
 
 langdir = os.path.dirname(__file__)
-import_taggers(langdir, "langs")
+import_taggers(langdir, __name__)

@@ -1,3 +1,4 @@
 spacy_stanza
 allennlp-models==2.7.0
 sacremoses
+awesome-align
