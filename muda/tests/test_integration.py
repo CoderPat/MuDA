@@ -42,6 +42,7 @@ class BaseTestCase:
             "tgt": fr_file,
             "docids": docids_file,
             "tgt_lang": self.langcode,
+            "hyps": [],
             "dump_tags": os.path.join("/tmp", self.temp_tags_file.name),
             "phenomena": ["lexical_cohesion", "formality", "verb_form", "pronouns"],
             "awesome_align_model": "bert-base-multilingual-cased",
@@ -69,10 +70,10 @@ class BaseTestCase:
                 for tag_val in token_tags.split(","):
                     tag_int = int(tag_val)
                     if tag_int == 0:
-                        token_results.append(len(self.tags_data[i][j]) == 0)
+                        token_results.append(len(self.tags_data[i][j]["tags"]) == 0)
                     else:
                         token_results.append(
-                            Phenomena(tag_int).name in self.tags_data[i][j]
+                            Phenomena(tag_int).name in self.tags_data[i][j]["tags"]
                         )
 
         return token_results

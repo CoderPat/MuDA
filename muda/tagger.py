@@ -4,7 +4,7 @@ import re
 import subprocess
 import tempfile
 from collections import defaultdict
-from typing import Any, Dict, List, Set, Tuple, Optional
+from typing import Any, Dict, List, Set, Tuple, Optional, NamedTuple
 
 import spacy
 import spacy_stanza  # type: ignore
@@ -13,6 +13,11 @@ from allennlp.predictors.predictor import Predictor
 Document = List[spacy.tokens.doc.Doc]
 Alignment = List[Dict[int, int]]
 Antecs = List[List[bool]]
+
+
+class Tagging(NamedTuple):
+    token: str
+    tags: List[str]
 
 
 def build_docs(docids, *args):  # type: ignore
@@ -68,7 +73,8 @@ class Tagger(abc.ABC):
 
         self.cohesion_threshold = cohesion_threshold
 
-    def _normalize(self, word: str) -> str:
+    @classmethod
+    def normalize(cls, word: str) -> str:
         """default normalization"""
         return re.sub(r"^\W+|\W+$", "", word.lower())
 
@@ -115,7 +121,7 @@ class Tagger(abc.ABC):
             "verb_form",
             "pronouns",
         ],
-    ) -> List[List[List[str]]]:
+    ) -> List[List[Tagging]]:
         """Tags a src-tgt document pair, returning the tags associated with each token
         in each sentence of the target document.
 
@@ -136,7 +142,9 @@ class Tagger(abc.ABC):
             "antecs_doc": antecs_doc,
             "align_doc": align_doc,
         }
-        tagged_doc: List[List[List[str]]] = [[[] for _ in tgt] for tgt in tgt_doc]
+        tagged_doc = [
+            [Tagging(token=tok.text, tags=[]) for tok in tgt] for tgt in tgt_doc
+        ]
         for phenomenon in phenomena:
             assert hasattr(self, phenomenon), "Phenomenon doesn't exist"
             phenomenon_fn = getattr(self, phenomenon)
@@ -152,7 +160,7 @@ class Tagger(abc.ABC):
                 assert len(sent_tags) == len(tagged_doc[i])
                 for j, tag in enumerate(sent_tags):
                     if tag:
-                        tagged_doc[i][j].append(phenomenon)
+                        tagged_doc[i][j].tags.append(phenomenon)
         return tagged_doc
 
     def _build_corefs(
@@ -290,7 +298,7 @@ class Tagger(abc.ABC):
         for src, tgt, align in zip(src_doc, tgt_doc, align_doc):
             tags = []
             for word in tgt:
-                norm_word = self._normalize(word.text)
+                norm_word = self.normalize(word.text)
                 if norm_word in formality_words:
                     # if a formality-related word is found, tag it if has appeared before
                     if formality_classes[norm_word] in prev_formality:
@@ -451,8 +459,8 @@ class Tagger(abc.ABC):
                     not antecs[s]
                     and src_pos[s] == "PRON"
                     and tgt_pos[r] == "PRON"
-                    and self._normalize(tgt_text[r])
-                    in self.ambiguous_pronouns.get(self._normalize(src_text[s]), [])
+                    and self.normalize(tgt_text[r])
+                    in self.ambiguous_pronouns.get(self.normalize(src_text[s]), [])
                 ):
                     tags[tgt_idx[r]] = True
             doc_tags.append(tags)
