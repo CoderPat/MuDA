@@ -45,12 +45,15 @@ def compute_metrics(
                         tagref_matches[tag] += 1
                         taghyp_matches[tag] += 1
 
-            word_count[tagging.token] += 1
+            word_count[word] += 1
 
-    prec = {tag: taghyp_matches[tag] / taghyp_total[tag] for tag in taghyp_total}
-    rec = {tag: tagref_matches[tag] / tagref_total[tag] for tag in tagref_total}
+    prec: Dict[str, float] = defaultdict(float)
+    rec: Dict[str, float] = defaultdict(float)
+    prec.update({tag: taghyp_matches[tag] / taghyp_total[tag] for tag in taghyp_total})
+    rec.update({tag: tagref_matches[tag] / tagref_total[tag] for tag in tagref_total})
+    all_tags = set(tagref_total.keys()).union(set(taghyp_total.keys()))
     f1 = {
-        tag: 2 * prec[tag] * rec[tag] / max(prec[tag] + rec[tag], 1e-20) for tag in prec
+        tag: 2 * prec[tag] * rec[tag] / max(prec[tag] + rec[tag], 1e-20)
+        for tag in all_tags
     }
-    # import pdb; pdb.set_trace()
     return prec, rec, f1
