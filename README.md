@@ -1,6 +1,10 @@
 # Multidimensional Discourse-Aware (MuDA) Benchmark
 
-**TODO**: Write introduction here.
+The Multidimensional Discourse-Aware (MuDA) Benchmark is a comprehensive suite of taggers and evaluators aimed at advancing the field of context-aware Machine Translation (MT). 
+
+Traditional translation quality metrics output uninterpertable scores, and fail to accuratly measure performance on context-aware discourse phenomena. MuDA takes a different direction, relying on neural-based syntatical and morphalogical analysers to measure performance of translation models on specific words and discourse phenomena.
+
+The MuDA taggers currently support 14 language pairs (see [this directory](CoderPat/MuDA/muda/langs)) but easily supports adding new languages.
 
 ## Installation
 
@@ -20,10 +24,26 @@ pip install -r requirements.txt
 
 ## Example Usage
 
+To tag an existing dataset, and extract the tags for later use, run the following command. 
+
 ```bash
 python muda/main.py \
-    --src example_data/maia/en-de/agent.en \
-    --tgt example_data/maia/en-de/agent.de \
-    --docids example_data/maia/en-de/agent.docids \
-    --tgt-lang de
+    --src /path/to/src \
+    --tgt /path/to/tgt \
+    --docids /path/to/docids \
+    --dump-tags /tmp/maia_ende.tags \
+    --tgt-lang "$lang" \
 ```
+
+To evaluate models on particular dataset (reporting per-tag metrics such as precision & recall), run
+
+```bash
+python muda/main.py \
+    --src /path/to/src \
+    --tgt /path/to/tgt \
+    --docids /path/to/docids \
+    --hyps /path/to/hyps.m1 /path/to/hyps.m2 \
+    --tgt-lang "$lang"
+```
+
+Note that MuDA relies on an `docids` file, containing the same number of lines as the `src/tgt` files and where each line contains a *document id* to which the source/target in the line belong to.
