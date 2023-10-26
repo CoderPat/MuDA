@@ -1,6 +1,6 @@
-# Multidimensional Discourse-Aware (MuDA) Benchmark
+# Multilingual Discourse-Aware (MuDA) Benchmark
 
-The Multidimensional Discourse-Aware (MuDA) Benchmark is a comprehensive suite of taggers and evaluators aimed at advancing the field of context-aware Machine Translation (MT). 
+The Multilingual Discourse-Aware (MuDA) Benchmark is a comprehensive suite of taggers and evaluators aimed at advancing the field of context-aware Machine Translation (MT). 
 
 Traditional translation quality metrics output uninterpertable scores, and fail to accuratly measure performance on context-aware discourse phenomena. MuDA takes a different direction, relying on neural-based syntatical and morphalogical analysers to measure performance of translation models on specific words and discourse phenomena.
 
