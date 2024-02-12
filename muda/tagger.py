@@ -55,6 +55,8 @@ class Tagger(abc.ABC):
         self,
         align_model: str = "bert-base-multilingual-cased",
         align_cachedir: Optional[str] = None,
+        positive_coref: bool = True,
+        coref_window: int = 1,
         cohesion_threshold: int = 3,
     ) -> None:
         """Initializes the tagger, loading the necessary models."""
@@ -70,6 +72,9 @@ class Tagger(abc.ABC):
 
         self.align_model = align_model
         self.align_cachedir = align_cachedir
+
+        self.positive_coref = positive_coref
+        self.coref_window = coref_window
 
         self.cohesion_threshold = cohesion_threshold
 
@@ -179,18 +184,49 @@ class Tagger(abc.ABC):
             # we check if this is the first sentence of a new document
             # since in this case there is no context that could help
             if docid != prev_docid:
-                has_antec = [True] * len(src)
-            else:
                 has_antec = [False] * len(src)
+                context = []
+            else:
+                # positive_coref assumes in case of doubt, that there is not antencedent
+                has_antec = [not self.positive_coref] * len(src)
+    
                 try:
-                    coref = en_coref.predict(document=src.text)
-                    if len(src) != len(coref["document"]):
-                        raise ValueError()
+                    if self.positive_coref:
+                        contextual_text = " ".join([*(ctx.text for ctx in context[-self.coref_window:]), src.text])
+                        coref = en_coref.predict(document=contextual_text)
+                        src_tokens = list(src)
+                        # check if tokens are in coref resolution
+                        # by matching suffix of the token with the suffix of the coref resolution
+                        for i, token in enumerate(src_tokens[::-1]):
+                            if token.text != coref["document"][len(coref["document"]) - i - 1]:
+                                raise ValueError()
+                            
+                        # import pdb; pdb.set_trace()
+                        for cluster in coref["clusters"]:
+                            orig = cluster[0]
+                            for mention in cluster[1:]:
+                                for i in range(mention[0], mention[1] + 1):
+                                    src_i = i - (len(coref["document"]) - len(src))
+                                    if src_i > 0:
+                                        # find the original token in the cluster
+                                        orig_tokens = [coref["doc"][j] for j in range(orig[0], orig[1] + 1)]
+                                        for ctx_i, ctx in enumerate(context[-self.coref_window:]):
+                                            # find if orig_tokens are in the context
+                                            # with sublist matching
+                                            for j in range(len(ctx) - len(orig_tokens) + 1):
+                                                span = [t.text for t in ctx[j:j + len(orig_tokens)]]
+                                                if span == orig_tokens:
+                                                    has_antec[src_i] = self.coref_window - ctx_i
+                        
+                    else:
+                        coref = en_coref.predict(document=src.text)
+                        if len(src) != len(coref["document"]):
+                            raise ValueError()
 
-                    for cluster in coref["clusters"]:
-                        for mention in cluster[1:]:
-                            for i in range(mention[0], mention[1] + 1):
-                                has_antec[i] = True
+                        for cluster in coref["clusters"]:
+                            for mention in cluster[1:]:
+                                for i in range(mention[0], mention[1] + 1):
+                                    has_antec[i] = False
 
                 # sometimes tokenizers are not consistent, or some other error happens in the coreference resolution
                 # in that case we just ignore the coref assuming it has no antencedents (might lead to some false positives)
@@ -199,6 +235,7 @@ class Tagger(abc.ABC):
                     print("coref error")
 
             antecs.append(has_antec)
+            context.append(src)
             prev_docid = docid
         return antecs
 
@@ -456,13 +493,15 @@ class Tagger(abc.ABC):
                 if r > len(tgt_text):
                     print(f"IndexError{r}: {tgt_text}")
                 if (
-                    not antecs[s]
+                    antecs[s]
                     and src_pos[s] == "PRON"
                     and tgt_pos[r] == "PRON"
                     and self.normalize(tgt_text[r])
                     in self.ambiguous_pronouns.get(self.normalize(src_text[s]), [])
                 ):
                     tags[tgt_idx[r]] = True
+                    #if self.positive_coref:
+
             doc_tags.append(tags)
 
         return doc_tags
