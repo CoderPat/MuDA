@@ -51,6 +51,19 @@ def parse_args() -> Dict[str, Any]:
         help="Cache directory to save awesome-align models",
     )
 
+    # coreference resolution arguments
+    parser.add_argument(
+        "--positive-coref",
+        action="store_true",
+        help="If set, coreference resolution will be explicit, i.e. pronouns will be tagged with their antecedents.",
+    )
+    parser.add_argument(
+        "--coref-window",
+        default=3,
+        type=int,
+        help="Number of context sentences to consider for positive coreference resolution."
+    )
+
     parser.add_argument(
         "--cohesion-threshold",
         default=3,
@@ -99,6 +112,8 @@ def main(args: Dict[str, Any]) -> None:
         align_model=args["awesome_align_model"],
         align_cachedir=args.get("awesome_align_cachedir"),
         cohesion_threshold=args["cohesion_threshold"],
+        positive_coref=args["positive_coref"],
+        coref_window=args["coref_window"],
     )
 
     preproc = tagger.preprocess(srcs, tgts, docids)

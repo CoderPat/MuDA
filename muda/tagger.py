@@ -55,7 +55,7 @@ class Tagger(abc.ABC):
         self,
         align_model: str = "bert-base-multilingual-cased",
         align_cachedir: Optional[str] = None,
-        positive_coref: bool = True,
+        positive_coref: bool = False,
         coref_window: int = 1,
         cohesion_threshold: int = 3,
     ) -> None:
@@ -165,7 +165,11 @@ class Tagger(abc.ABC):
                 assert len(sent_tags) == len(tagged_doc[i])
                 for j, tag in enumerate(sent_tags):
                     if tag:
-                        tagged_doc[i][j].tags.append(phenomenon)
+                        #import pdb; pdb.set_trace()
+                        if tag is True:
+                            tagged_doc[i][j].tags.append(phenomenon)
+                        else:
+                            tagged_doc[i][j].tags.append((phenomenon, tag))
         return tagged_doc
 
     def _build_corefs(
@@ -201,22 +205,21 @@ class Tagger(abc.ABC):
                             if token.text != coref["document"][len(coref["document"]) - i - 1]:
                                 raise ValueError()
                             
-                        # import pdb; pdb.set_trace()
                         for cluster in coref["clusters"]:
                             orig = cluster[0]
                             for mention in cluster[1:]:
                                 for i in range(mention[0], mention[1] + 1):
                                     src_i = i - (len(coref["document"]) - len(src))
-                                    if src_i > 0:
+                                    if src_i >= 0:
                                         # find the original token in the cluster
-                                        orig_tokens = [coref["doc"][j] for j in range(orig[0], orig[1] + 1)]
+                                        orig_tokens = [coref["document"][j] for j in range(orig[0], orig[1] + 1)]
                                         for ctx_i, ctx in enumerate(context[-self.coref_window:]):
                                             # find if orig_tokens are in the context
                                             # with sublist matching
                                             for j in range(len(ctx) - len(orig_tokens) + 1):
                                                 span = [t.text for t in ctx[j:j + len(orig_tokens)]]
                                                 if span == orig_tokens:
-                                                    has_antec[src_i] = self.coref_window - ctx_i
+                                                    has_antec[src_i] = min(self.coref_window, len(context)) - ctx_i
                         
                     else:
                         coref = en_coref.predict(document=src.text)
@@ -234,6 +237,7 @@ class Tagger(abc.ABC):
                     coref_errors += 1
                     print("coref error")
 
+            # import pdb; pdb.set_trace()
             antecs.append(has_antec)
             context.append(src)
             prev_docid = docid
@@ -499,7 +503,7 @@ class Tagger(abc.ABC):
                     and self.normalize(tgt_text[r])
                     in self.ambiguous_pronouns.get(self.normalize(src_text[s]), [])
                 ):
-                    tags[tgt_idx[r]] = True
+                    tags[tgt_idx[r]] = antecs[s]
                     #if self.positive_coref:
 
             doc_tags.append(tags)
